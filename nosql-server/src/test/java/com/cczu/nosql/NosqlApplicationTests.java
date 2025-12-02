@@ -1,7 +1,7 @@
 package com.cczu.nosql;
 
 import com.cczu.nosql.properties.JwtProperties;
-import com.cczu.nosql.common.util.JwtUtil;
+import com.cczu.nosql.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
