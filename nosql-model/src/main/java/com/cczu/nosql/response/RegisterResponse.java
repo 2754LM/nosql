@@ -13,7 +13,7 @@ public class RegisterResponse {
 	private Long userId;
 	//用户名
 	@Schema(description = "用户名")
-	private String userName;
+	private String username;
 	//生成的JWT令牌
 	@Schema(description = "生成的JWT令牌")
 	private String token;

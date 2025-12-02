@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = false)
 @Entity
 @Data
@@ -19,4 +21,10 @@ public class User extends BaseModel{
 	private String name;
 
 	private String password;
+
+	@OneToMany(mappedBy = "fromUser", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<UserFollow> userFollows;
+
+	@OneToMany(mappedBy = "toUser", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<UserFollow> followers;
 }

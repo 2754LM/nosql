@@ -2,10 +2,11 @@ package com.cczu.nosql.controller;
 
 import com.cczu.nosql.constant.BizCode;
 import com.cczu.nosql.response.FollowStateResponse;
+import com.cczu.nosql.response.FollowersResponse;
+import com.cczu.nosql.response.FollowingsResponse;
 import com.cczu.nosql.result.Result;
 import com.cczu.nosql.service.FollowService;
 import com.cczu.nosql.service.UserService;
-import com.cczu.nosql.session.Session;
 import com.cczu.nosql.util.SessionContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -74,12 +75,12 @@ public class UserController {
 	/**
 	 * 查询用户关注列表
 	 * @param userId 用户ID，可传 "me" 表示当前登录人
-	 * @return 用户信息
+	 * @return 关注列表
 	 */
 	@Parameter(in = ParameterIn.PATH, name = "userId", description = "用户ID，可传 \"me\" 表示当前登录人", required = true)
 	@Operation(summary = "查询用户关注列表", description = "查询用户关注列表")
 	@GetMapping("/{userId}/followings")
-	public Result<?> getUserFollowings(@PathVariable String userId) {
+	public Result<FollowingsResponse> getUserFollowings(@PathVariable String userId) {
 		log.info("查询用户 {} 关注列表", userId);
 		Long uid = "me".equals(userId) ? SessionContext.getSession().getUserId() : Long.valueOf(userId);
 		return Result.success(followService.getUserFollowings(uid));
@@ -88,12 +89,12 @@ public class UserController {
 	/**
 	 * 查询用户粉丝列表
 	 * @param userId 用户ID，可传 "me" 表示当前登录人
-	 * @return 用户信息
+	 * @return 粉丝列表
 	 */
 	@Parameter(in = ParameterIn.PATH, name = "userId", description = "用户ID，可传 \"me\" 表示当前登录人", required = true)
 	@Operation(summary = "查询用户粉丝列表", description = "查询用户粉丝列表")
 	@GetMapping("/{userId}/followers")
-	public Result<?> getUserFollowers(@PathVariable String userId) {
+	public Result<FollowersResponse> getUserFollowers(@PathVariable String userId) {
 		log.info("查询用户 {} 粉丝列表", userId);
 		Long uid = "me".equals(userId) ? SessionContext.getSession().getUserId() : Long.valueOf(userId);
 		return Result.success(followService.getUserFollowers(uid));

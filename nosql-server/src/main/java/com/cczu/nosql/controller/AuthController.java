@@ -4,8 +4,11 @@ import com.cczu.nosql.constant.JwtClaimsConstant;
 import com.cczu.nosql.request.LoginRequest;
 import com.cczu.nosql.entity.User;
 import com.cczu.nosql.properties.JwtProperties;
+import com.cczu.nosql.request.RegisterRequest;
+import com.cczu.nosql.response.RegisterResponse;
 import com.cczu.nosql.result.Result;
 import com.cczu.nosql.service.AuthService;
+import com.cczu.nosql.service.UserService;
 import com.cczu.nosql.util.JwtUtil;
 import com.cczu.nosql.response.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,7 +63,7 @@ public class AuthController {
 	 */
 	@Operation(summary = "用户注册", description = "用户注册")
 	@PostMapping("/register")
-	public Result<LoginResponse> register(@Valid @RequestBody LoginRequest request) {
+	public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
 		log.info("用户注册，用户名：{}", request.getName());
 		User user = authService.register(request);
 		String token = JwtUtil.createJWT(
@@ -71,7 +74,7 @@ public class AuthController {
 						JwtClaimsConstant.USER_NAME, user.getName()
 				));
 		log.info("用户注册成功，用户名：{}，生成Token：{}", request.getName(), token);
-		return Result.success(new LoginResponse(user.getId(), user.getName(), token));
+		return Result.success(new RegisterResponse(user.getId(), user.getName(), token));
 	}
 
 }

@@ -22,6 +22,8 @@ public enum BizCode {
 	NO_PERMISSION(2005, "权限不足"),
 	USER_EXIST(2006, "用户已存在"),
 
+	// 3xxxx  数据库
+	DB_ERROR(3001, "数据库异常"),
 	//9999  未知错误
 	UNKNOWN_ERROR(9999, "未知错误");
 

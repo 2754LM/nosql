@@ -1,38 +1,32 @@
 package com.cczu.nosql.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.*;
 import io.ebean.annotation.Index;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 @Entity
 @Data
-@Table(
-		name = "md_user_follow",
-		uniqueConstraints = {
-				@UniqueConstraint(
-						name = "uk_user_follow_pair",
-						columnNames = {"from_user_id", "to_user_id"}
-				)
-		}
-)
+@Table(name = "md_user_follow")
 @NoArgsConstructor
-public class UserFollow extends BaseModel{
+@AllArgsConstructor
+public class UserFollow {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Index(name = "idx_user_follow_from_user_id")
-	private Long fromUserId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "from_user_id", foreignKey = @ForeignKey(name = "fk_uf_from_user"))
+	private User fromUser;
 
-	@Index(name = "idx_user_follow_to_user_id")
-	private Long toUserId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "to_user_id", foreignKey = @ForeignKey(name = "fk_uf_to_user"))
+	private User toUser;
 
 	public UserFollow(Long fromUserId, Long toUserId) {
-		this.fromUserId = fromUserId;
-		this.toUserId = toUserId;
+		this.fromUser = new User();
+		this.fromUser.setId(fromUserId);
+		this.toUser = new User();
+		this.toUser.setId(toUserId);
 	}
 
 }

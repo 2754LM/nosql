@@ -3,18 +3,19 @@ package com.cczu.nosql.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Schema
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
-public class LoginResponse {
-	//用户ID
+public class FollowersResponse {
+	// 用户ID
 	@Schema(description = "用户ID")
 	private Long userId;
-	//用户名
-	@Schema(description = "用户名")
-	private String username;
-	//生成的JWT令牌
-	@Schema(description = "生成的JWT令牌")
-	private String token;
+	// 粉丝列表
+	@Schema(description = "粉丝列表")
+	private List<UserInfoResponse> followers;
 }
