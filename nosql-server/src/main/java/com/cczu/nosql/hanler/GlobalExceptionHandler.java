@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.sql.SQLException;
 
@@ -27,7 +28,8 @@ public class GlobalExceptionHandler {
 	//参数校验
 	@ExceptionHandler({MethodArgumentNotValidException.class,
 			HttpMessageNotReadableException.class,
-			ConstraintViolationException.class})
+			ConstraintViolationException.class,
+			HandlerMethodValidationException.class})
 	public Result<Void> handleParam(Exception ex) {
 		log.warn("参数非法: {}", ex.getMessage());
 		return Result.fail(BizCode.PARAM_INVALID);

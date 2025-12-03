@@ -1,24 +1,18 @@
 server:
   port: 8080
+
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: postgres
-    password: 123456
   threads:
     virtual:
       enabled: true
+
 jwt:
   secret: dGhpc0lzQVRoZW50aWN0aGlydHlUd29CaXRzU2VjcmV0ICE
   expire: 3600s
   header: access-token
 
-ebean:
-  ddl:
-    generate: true
-    run: true
 datasource:
-  db:
-    username: postgres
-    password: 123456
-    url: jdbc:postgresql://localhost:5432/postgres
+  username: postgres
+  password: 123456
+  url: jdbc:postgresql://localhost:5432/postgres
+  driver: org.postgresql.Driver

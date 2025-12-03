@@ -1,9 +1,13 @@
 package com.cczu.nosql.entity;
 
 import io.ebean.annotation.Index;
+import io.ebean.annotation.NotNull;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -11,13 +15,12 @@ import java.util.List;
 @Entity
 @Data
 @Table(name = "md_user")
+@NoArgsConstructor
+@AllArgsConstructor
 public class User extends BaseModel{
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Index(name = "idx_user_name")
-	@Column(nullable = false)
 	private String name;
 
 	private String password;
@@ -27,4 +30,7 @@ public class User extends BaseModel{
 
 	@OneToMany(mappedBy = "toUser", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<UserFollow> followers;
+
+	@OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<Article> articles;
 }

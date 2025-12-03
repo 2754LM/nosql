@@ -1,30 +1,27 @@
 package com.cczu.nosql.entity;
 
 import io.ebean.DB;
-import io.ebean.annotation.WhenCreated;
-import io.ebean.annotation.WhenModified;
-import io.ebean.annotation.WhoCreated;
-import io.ebean.annotation.WhoModified;
+import io.ebean.annotation.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 @Data
+@MappedSuperclass
 public class BaseModel {
-	// 创建人
-	@WhoCreated
-	protected Integer crtUser;
-
 	// 创建时间
 	@WhenCreated
-	protected LocalDateTime crtTime;
-
-	// 最新修改人
-	@WhoModified
-	protected Integer recUser;
+	private LocalDateTime crtTime;
 
 	// 最新修改时间
 	@WhenModified
-	protected LocalDateTime recTime;
+	private LocalDateTime recTime;
+
+	//是否删除
+	@Column(columnDefinition = "boolean default false")
+	private Boolean deleted = false;
 
 	public void save() {
 		DB.save(this);

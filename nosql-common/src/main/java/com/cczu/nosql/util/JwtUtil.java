@@ -19,7 +19,7 @@ public class JwtUtil {
 
 		JwtBuilder builder = Jwts.builder()
 				.claims(claims)
-				.signWith(key)
+				.signWith(key, SignatureAlgorithm.HS256)
 				.expiration(exp);
 
 		return builder.compact();

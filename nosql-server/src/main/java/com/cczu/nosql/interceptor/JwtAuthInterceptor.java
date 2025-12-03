@@ -13,8 +13,11 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 public class JwtAuthInterceptor implements HandlerInterceptor {
-	@Autowired
-	JwtProperties jwtProps;
+	private final JwtProperties jwtProps;
+
+	public JwtAuthInterceptor(JwtProperties jwtProps) {
+		this.jwtProps = jwtProps;
+	}
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -28,11 +31,11 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
 
 		try {
 			Claims claims = JwtUtil.parseJWT(jwtProps.getSecret(), token);
-			SessionContext.setUid((Long) claims.get(JwtClaimsConstant.USER_ID));
+			SessionContext.setUid(((Number)claims.get(JwtClaimsConstant.USER_ID)).longValue());
 			return true;
 		} catch (Exception e) {
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.getWriter().write("Invalid or expired token");
+			response.getWriter().write(e.getMessage());
 			return false;
 		}
 	}

@@ -9,17 +9,16 @@ import io.ebean.annotation.Index;
 @Table(name = "md_user_follow")
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserFollow {
+public class UserFollow extends BaseModel{
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "from_user_id", foreignKey = @ForeignKey(name = "fk_uf_from_user"))
+	@JoinColumn(name = "from_user_id")
 	private User fromUser;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "to_user_id", foreignKey = @ForeignKey(name = "fk_uf_to_user"))
+	@JoinColumn(name = "to_user_id")
 	private User toUser;
 
 	public UserFollow(Long fromUserId, Long toUserId) {

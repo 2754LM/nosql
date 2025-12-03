@@ -1,7 +1,9 @@
 package com.cczu.nosql;
 
+import com.cczu.nosql.entity.User;
 import com.cczu.nosql.properties.JwtProperties;
 import com.cczu.nosql.util.JwtUtil;
+import io.ebean.DB;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,16 +14,11 @@ import java.util.Map;
 
 @SpringBootTest
 class NosqlApplicationTests {
-	@Autowired
-	private JwtProperties props;
 	@Test
 	void jwtTest(){
-		Map<String, Object> claims = new HashMap<>();
-		claims.put("userId", 1);
-		claims.put("username", "admin");
-		String jwt = JwtUtil.createJWT(props.getSecret(), props.getExpire(),  claims);
-		Claims claims1 = JwtUtil.parseJWT(props.getSecret(), jwt);
-		System.out.println(claims);
+		User user = new User();
+		user.setName("cczu");
+		DB.save(user);
 	}
 
 }

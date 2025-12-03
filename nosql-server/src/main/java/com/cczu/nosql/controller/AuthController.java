@@ -8,7 +8,6 @@ import com.cczu.nosql.request.RegisterRequest;
 import com.cczu.nosql.response.RegisterResponse;
 import com.cczu.nosql.result.Result;
 import com.cczu.nosql.service.AuthService;
-import com.cczu.nosql.service.UserService;
 import com.cczu.nosql.util.JwtUtil;
 import com.cczu.nosql.response.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,10 +29,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-	@Autowired
-	AuthService authService;
-	@Autowired
-	JwtProperties jwtProperties;
+	final AuthService authService;
+	final JwtProperties jwtProperties;
+
+	public AuthController(AuthService authService, JwtProperties jwtProperties) {
+		this.authService = authService;
+		this.jwtProperties = jwtProperties;
+	}
 
 	/**
 	 * 用户登录
@@ -43,7 +45,7 @@ public class AuthController {
 	@Operation(summary = "用户登录", description = "用户登录")
 	@PostMapping("/login")
 	public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		log.info("用户登录，用户名：{}", request.getName());
+		log.info("用户登录，用户名：{}", request.getUsername());
 		User user = authService.login(request);
 		String token = JwtUtil.createJWT(
 				jwtProperties.getSecret(),
@@ -52,7 +54,7 @@ public class AuthController {
 						JwtClaimsConstant.USER_ID,   user.getId(),
 						JwtClaimsConstant.USER_NAME, user.getName()
 				));
-		log.info("用户登录成功，用户名：{}，生成Token：{}", request.getName(), token);
+		log.info("用户登录成功，用户名：{}，生成Token：{}", request.getUsername(), token);
 		return Result.success(new LoginResponse(user.getId(), user.getName(), token));
 	}
 
@@ -64,7 +66,7 @@ public class AuthController {
 	@Operation(summary = "用户注册", description = "用户注册")
 	@PostMapping("/register")
 	public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-		log.info("用户注册，用户名：{}", request.getName());
+		log.info("用户注册，用户名：{}", request.getUsername());
 		User user = authService.register(request);
 		String token = JwtUtil.createJWT(
 				jwtProperties.getSecret(),
@@ -73,7 +75,7 @@ public class AuthController {
 						JwtClaimsConstant.USER_ID,   user.getId(),
 						JwtClaimsConstant.USER_NAME, user.getName()
 				));
-		log.info("用户注册成功，用户名：{}，生成Token：{}", request.getName(), token);
+		log.info("用户注册成功，用户名：{}，生成Token：{}", request.getUsername(), token);
 		return Result.success(new RegisterResponse(user.getId(), user.getName(), token));
 	}
 

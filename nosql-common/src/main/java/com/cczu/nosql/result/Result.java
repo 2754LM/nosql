@@ -22,31 +22,31 @@ public class Result<T> {
 	private T data;
 	//错误详情
 	@Schema(description = "错误详情")
-	private String detail;
+	private String detail = "";
 
 	public static <T> Result<T> success() {
-		return new Result<>(BizCode.SUCCESS.getCode(), BizCode.SUCCESS.getMessage(), null, null);
+		return new Result<>(BizCode.SUCCESS.getCode(), BizCode.SUCCESS.getMessage(), null, "");
 	}
 
 	public static <T> Result<T> success(T data) {
-		return new Result<>(BizCode.SUCCESS.getCode(), BizCode.SUCCESS.getMessage(), data, null);
+		return new Result<>(BizCode.SUCCESS.getCode(), BizCode.SUCCESS.getMessage(), data, "");
 	}
 
 	public static <T> Result<T> success(T data, String message) {
-		return new Result<>(BizCode.SUCCESS.getCode(), message, data, null);
+		return new Result<>(BizCode.SUCCESS.getCode(), message, data, "");
 	}
 
 
 	public static <T> Result<T> success(String message) {
-		return new Result<>(BizCode.SUCCESS.getCode(), message, null, null);
+		return new Result<>(BizCode.SUCCESS.getCode(), message, null, "");
 	}
 
 	public static <T> Result<T> fail(int code, String message) {
-		return new Result<>(code, message, null, null);
+		return new Result<>(code, message, null, "");
 	}
 
 	public static <T> Result<T> fail(BizCode bizCode) {
-		return new Result<>(bizCode.getCode(), bizCode.getMessage(), null, null);
+		return new Result<>(bizCode.getCode(), bizCode.getMessage(), null, "");
 	}
 
 	public static <T> Result<T> fail(BizCode bizCode, String detail) {
