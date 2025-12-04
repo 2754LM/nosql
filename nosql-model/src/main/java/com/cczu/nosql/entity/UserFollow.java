@@ -1,15 +1,16 @@
 package com.cczu.nosql.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-import io.ebean.annotation.Index;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Data
 @Table(name = "md_user_follow")
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserFollow extends BaseModel{
+public class UserFollow extends BaseModel {
 	@Id
 	private Long id;
 

@@ -6,12 +6,14 @@ import com.cczu.nosql.response.FollowerResponse;
 import com.cczu.nosql.response.FollowingResponse;
 import com.cczu.nosql.result.PageResult;
 
+import java.util.List;
+
 public interface FollowService {
 	FollowStateResponse toggleFollow(Long uid, Long toUserId);
 
 	FollowStateResponse exists(Long uid, Long toUserId);
 
-	PageResult<FollowerResponse> getUserFollowers(Long uid, PageParam pageParam);
+	List<FollowerResponse> getUserFollowers(Long uid, PageParam pageParam);
 
-	PageResult<FollowingResponse> getUserFollowings(Long uid, PageParam pageParam);
+	List<FollowingResponse> getUserFollowings(Long uid, PageParam pageParam);
 }

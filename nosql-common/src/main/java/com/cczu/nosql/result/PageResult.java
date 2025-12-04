@@ -1,5 +1,7 @@
 package com.cczu.nosql.result;
 
+import com.cczu.nosql.constant.BizCode;
+import com.cczu.nosql.request.PageParam;
 import io.ebean.PagedList;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -12,30 +14,27 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PageResult <T>{
+public class PageResult<T> extends BaseResult {
 	//记录列表
 	@Schema(description = "记录列表")
 	private List<T> records;
-	//总记录数
-	@Schema(description = "总记录数")
-	private long total;
 	//每页记录数
 	@Schema(description = "每页记录数")
 	private long size;
 	//当前页，从1开始
 	@Schema(description = "当前页，从1开始")
 	private long current;
-	//总页数
-	@Schema(description = "总页数")
-	private long pages;
 
-	public static <E, T> PageResult<T> of(List<T> records, PagedList<E> pagedList) {
-		return new PageResult<>(
-				records,
-				pagedList.getTotalCount(),
-				pagedList.getPageSize(),
-				pagedList.getPageIndex() + 1,
-				pagedList.getTotalPageCount()
-		);
+
+	public static <T> PageResult<T> success(List<T> records, PageParam pageParam) {
+		PageResult<T> result = new PageResult<>();
+		result.setCode(BizCode.SUCCESS.getCode());
+		result.setMessage(BizCode.SUCCESS.getMessage());
+		result.setRecords(records);
+		if (pageParam != null) {
+			result.setSize(pageParam.getSize());
+			result.setCurrent(pageParam.getCurrent());
+		}
+		return result;
 	}
 }

@@ -2,11 +2,13 @@ package com.cczu.nosql.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Entity
 @Table(name = "md_article")
-public class Article extends BaseModel{
+@NoArgsConstructor
+public class Article extends BaseModel {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

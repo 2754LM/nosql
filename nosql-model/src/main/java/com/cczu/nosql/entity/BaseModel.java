@@ -1,13 +1,14 @@
 package com.cczu.nosql.entity;
 
 import io.ebean.DB;
-import io.ebean.annotation.*;
+import io.ebean.annotation.WhenCreated;
+import io.ebean.annotation.WhenModified;
 import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+
 @Data
 @MappedSuperclass
 public class BaseModel {
@@ -20,7 +21,6 @@ public class BaseModel {
 	private LocalDateTime recTime;
 
 	//是否删除
-	@Column(columnDefinition = "boolean default false")
 	private Boolean deleted = false;
 
 	public void save() {

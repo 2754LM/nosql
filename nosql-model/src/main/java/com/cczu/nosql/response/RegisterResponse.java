@@ -3,10 +3,12 @@ package com.cczu.nosql.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.ToString;
 
 @Data
 @AllArgsConstructor
 @Schema
+@ToString
 public class RegisterResponse {
 	//用户ID
 	@Schema(description = "用户ID")

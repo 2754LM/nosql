@@ -1,11 +1,16 @@
 package com.cczu.nosql.service;
 
-import com.cczu.nosql.entity.User;
+import com.cczu.nosql.request.LoginRequest;
+import com.cczu.nosql.request.RegisterRequest;
+import com.cczu.nosql.response.LoginResponse;
+import com.cczu.nosql.response.RegisterResponse;
+import com.cczu.nosql.response.UserInfoResponse;
 
 public interface UserService {
-	User getById(Long id);
+	UserInfoResponse getInfoById(Long id);
 
-	User getByName(String name);
+	LoginResponse login(LoginRequest request);
 
-	void save(User user);
+	RegisterResponse register(RegisterRequest request);
+
 }

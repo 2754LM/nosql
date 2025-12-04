@@ -1,26 +1,20 @@
 package com.cczu.nosql.controller;
 
-import com.cczu.nosql.constant.JwtClaimsConstant;
 import com.cczu.nosql.request.LoginRequest;
-import com.cczu.nosql.entity.User;
-import com.cczu.nosql.properties.JwtProperties;
 import com.cczu.nosql.request.RegisterRequest;
+import com.cczu.nosql.response.LoginResponse;
 import com.cczu.nosql.response.RegisterResponse;
 import com.cczu.nosql.result.Result;
-import com.cczu.nosql.service.AuthService;
-import com.cczu.nosql.util.JwtUtil;
-import com.cczu.nosql.response.LoginResponse;
+import com.cczu.nosql.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 /**
  * 认证控制器
  */
@@ -29,16 +23,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-	final AuthService authService;
-	final JwtProperties jwtProperties;
+	final UserService userService;
 
-	public AuthController(AuthService authService, JwtProperties jwtProperties) {
-		this.authService = authService;
-		this.jwtProperties = jwtProperties;
+	public AuthController(UserService userService) {
+		this.userService = userService;
 	}
+
 
 	/**
 	 * 用户登录
+	 *
 	 * @param request 登录请求
 	 * @return 登录响应
 	 */
@@ -46,20 +40,14 @@ public class AuthController {
 	@PostMapping("/login")
 	public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 		log.info("用户登录，用户名：{}", request.getUsername());
-		User user = authService.login(request);
-		String token = JwtUtil.createJWT(
-				jwtProperties.getSecret(),
-				jwtProperties.getExpire(),
-				Map.of(
-						JwtClaimsConstant.USER_ID,   user.getId(),
-						JwtClaimsConstant.USER_NAME, user.getName()
-				));
-		log.info("用户登录成功，用户名：{}，生成Token：{}", request.getUsername(), token);
-		return Result.success(new LoginResponse(user.getId(), user.getName(), token));
+		LoginResponse response = userService.login(request);
+		log.info("用户登录成功，{}", response);
+		return Result.success(response);
 	}
 
 	/**
 	 * 用户注册
+	 *
 	 * @param request 注册请求
 	 * @return 注册响应
 	 */
@@ -67,16 +55,9 @@ public class AuthController {
 	@PostMapping("/register")
 	public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
 		log.info("用户注册，用户名：{}", request.getUsername());
-		User user = authService.register(request);
-		String token = JwtUtil.createJWT(
-				jwtProperties.getSecret(),
-				jwtProperties.getExpire(),
-				Map.of(
-						JwtClaimsConstant.USER_ID,   user.getId(),
-						JwtClaimsConstant.USER_NAME, user.getName()
-				));
-		log.info("用户注册成功，用户名：{}，生成Token：{}", request.getUsername(), token);
-		return Result.success(new RegisterResponse(user.getId(), user.getName(), token));
+		RegisterResponse response = userService.register(request);
+		log.info("用户注册成功，{}", response);
+		return Result.success(response);
 	}
 
 }

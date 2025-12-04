@@ -1,7 +1,9 @@
 package com.cczu.nosql.service.impl;
 
+import com.cczu.nosql.constant.BizCode;
 import com.cczu.nosql.entity.User;
 import com.cczu.nosql.entity.UserFollow;
+import com.cczu.nosql.exception.BizException;
 import com.cczu.nosql.request.PageParam;
 import com.cczu.nosql.response.FollowStateResponse;
 import com.cczu.nosql.response.FollowerResponse;
@@ -14,6 +16,7 @@ import io.ebean.PagedList;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +43,7 @@ public class FollowServiceImpl implements FollowService {
 	}
 
 	@Override
-	public PageResult<FollowerResponse> getUserFollowers(Long uid, PageParam pageParam) {
+	public List<FollowerResponse> getUserFollowers(Long uid, PageParam pageParam) {
 		PagedList<UserFollow> pagedList = DB.find(UserFollow.class)
 				.fetch("fromUser")
 				.where()
@@ -73,12 +76,12 @@ public class FollowServiceImpl implements FollowService {
 				})
 				.toList();
 
-		return PageResult.of(followerResponses, pagedList);
+		return followerResponses;
 	}
 
 
 	@Override
-	public PageResult<FollowingResponse> getUserFollowings(Long uid, PageParam pageParam) {
+	public List<FollowingResponse> getUserFollowings(Long uid, PageParam pageParam) {
 		PagedList<UserFollow> pagedList = DB.find(UserFollow.class)
 				.fetch("toUser")
 				.where()
@@ -111,7 +114,7 @@ public class FollowServiceImpl implements FollowService {
 				})
 				.toList();
 
-		return PageResult.of(followingResponses, pagedList);
+		return followingResponses;
 	}
 
 }

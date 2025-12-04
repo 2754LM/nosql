@@ -1,4 +1,5 @@
 package com.cczu.nosql.util;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
@@ -24,6 +25,7 @@ public class JwtUtil {
 
 		return builder.compact();
 	}
+
 	//校验JWT
 	public static Claims parseJWT(String secretKey, String token) {
 		SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
