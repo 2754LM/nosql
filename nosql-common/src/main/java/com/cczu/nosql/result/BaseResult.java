@@ -9,10 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BaseResult {
-	@Schema(description = "状态码")
-	private int code;
+  @Schema(description = "状态码")
+  private int code;
 
-	@Schema(description = "提示信息")
-	private String message;
-
+  @Schema(description = "提示信息")
+  private String message;
 }

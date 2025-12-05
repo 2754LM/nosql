@@ -9,20 +9,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-	private final JwtAuthInterceptor jwtAuthInterceptor;
-	private final SessionClearInterceptor sessionClearInterceptor;
+  private final JwtAuthInterceptor jwtAuthInterceptor;
+  private final SessionClearInterceptor sessionClearInterceptor;
 
-	public WebMvcConfig(JwtAuthInterceptor jwtAuthInterceptor, SessionClearInterceptor sessionClearInterceptor) {
-		this.jwtAuthInterceptor = jwtAuthInterceptor;
-		this.sessionClearInterceptor = sessionClearInterceptor;
-	}
+  public WebMvcConfig(
+      JwtAuthInterceptor jwtAuthInterceptor, SessionClearInterceptor sessionClearInterceptor) {
+    this.jwtAuthInterceptor = jwtAuthInterceptor;
+    this.sessionClearInterceptor = sessionClearInterceptor;
+  }
 
-	@Override
-	public void addInterceptors(InterceptorRegistry registry) {
-//		 registry.addInterceptor(jwtAuthInterceptor).addPathPatterns("/api/**")
-//				 .excludePathPatterns("/api/auth/**");
-//		 registry.addInterceptor(sessionClearInterceptor).addPathPatterns("/api/**")
-//				 .excludePathPatterns("/api/auth/**");
-	}
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    //		 registry.addInterceptor(jwtAuthInterceptor).addPathPatterns("/api/**")
+    //				 .excludePathPatterns("/api/auth/**");
+    //		 registry.addInterceptor(sessionClearInterceptor).addPathPatterns("/api/**")
+    //				 .excludePathPatterns("/api/auth/**");
+  }
 }
-

@@ -8,13 +8,14 @@ import lombok.Data;
 @Schema
 @Data
 public class PageParam {
-	//页码
-	@Schema(description = "页码")
-	@Min(1)
-	private long current = 1;
-	//页大小
-	@Schema(description = "页大小")
-	@Min(1)
-	@Max(1000)
-	private long size = 20;
+  // 页码
+  @Schema(description = "页码")
+  @Min(1)
+  private long current = 1;
+
+  // 页大小
+  @Schema(description = "页大小")
+  @Min(1)
+  @Max(1000)
+  private long size = 20;
 }

@@ -2,29 +2,28 @@ package com.cczu.nosql.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+@EqualsAndHashCode(callSuper = false)
 @Data
 @Entity
 @Table(name = "md_article")
 @NoArgsConstructor
 public class Article extends BaseModel {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+  @Id private Long id;
 
-	@Column(nullable = false)
-	private String title;
+  @Column(nullable = false)
+  private String title;
 
-	@Lob
-	@Column(nullable = false)
-	private String content;
+  @Lob
+  @Column(nullable = false)
+  private String content;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "author_id")
-	private User author;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "author_id")
+  private User author;
 
-	@Column(columnDefinition = "bigint default 0")
-	private Long likeCount;
+  private Long likeCount;
 }

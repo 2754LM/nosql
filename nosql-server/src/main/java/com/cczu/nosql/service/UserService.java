@@ -7,10 +7,9 @@ import com.cczu.nosql.response.RegisterResponse;
 import com.cczu.nosql.response.UserInfoResponse;
 
 public interface UserService {
-	UserInfoResponse getInfoById(Long id);
+  UserInfoResponse getInfoById(Long id);
 
-	LoginResponse login(LoginRequest request);
+  LoginResponse login(LoginRequest request);
 
-	RegisterResponse register(RegisterRequest request);
-
+  RegisterResponse register(RegisterRequest request);
 }

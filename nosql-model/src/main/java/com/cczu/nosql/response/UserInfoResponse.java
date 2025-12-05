@@ -9,10 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserInfoResponse {
-	private Long userId;
-	private String username;
-	public UserInfoResponse(User user) {
-		this.userId = user.getId();
-		this.username = user.getName();
-	}
+  private Long userId;
+  private String username;
+
+  public UserInfoResponse(User user) {
+    this.userId = user.getId();
+    this.username = user.getName();
+  }
 }

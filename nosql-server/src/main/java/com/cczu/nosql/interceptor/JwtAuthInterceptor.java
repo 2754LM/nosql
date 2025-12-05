@@ -12,31 +12,31 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 public class JwtAuthInterceptor implements HandlerInterceptor {
-	private final JwtProperties jwtProps;
+  private final JwtProperties jwtProps;
 
-	public JwtAuthInterceptor(JwtProperties jwtProps) {
-		this.jwtProps = jwtProps;
-	}
+  public JwtAuthInterceptor(JwtProperties jwtProps) {
+    this.jwtProps = jwtProps;
+  }
 
-	@Override
-	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+  @Override
+  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+      throws Exception {
 
-		String token = request.getHeader(jwtProps.getHeader());
-		if (token == null || token.isBlank()) {
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.getWriter().write("Missing token");
-			return false;
-		}
+    String token = request.getHeader(jwtProps.getHeader());
+    if (token == null || token.isBlank()) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.getWriter().write("Missing token");
+      return false;
+    }
 
-		try {
-			Claims claims = JwtUtil.parseJWT(jwtProps.getSecret(), token);
-			SessionContext.setUid(((Number) claims.get(JwtClaimsConstant.USER_ID)).longValue());
-			return true;
-		} catch (Exception e) {
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.getWriter().write(e.getMessage());
-			return false;
-		}
-	}
-
+    try {
+      Claims claims = JwtUtil.parseJWT(jwtProps.getSecret(), token);
+      SessionContext.setUid(((Number) claims.get(JwtClaimsConstant.USER_ID)).longValue());
+      return true;
+    } catch (Exception e) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.getWriter().write(e.getMessage());
+      return false;
+    }
+  }
 }

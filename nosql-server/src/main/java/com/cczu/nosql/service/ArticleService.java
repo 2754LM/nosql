@@ -6,13 +6,15 @@ import com.cczu.nosql.request.PageParam;
 import com.cczu.nosql.request.UpdateArticleRequest;
 import com.cczu.nosql.response.FullArticleResponse;
 import jakarta.validation.Valid;
-
 import java.util.List;
 
 public interface ArticleService {
-	void create(@Valid CreateArticleRequest request);
+  void create(@Valid CreateArticleRequest request);
 
-	List<FullArticleResponse> searchArticles(@Valid ArticleQueryParam queryParam, PageParam pageParam);
+  List<FullArticleResponse> searchArticles(
+      @Valid ArticleQueryParam queryParam, PageParam pageParam);
 
-	void updateArticle(@Valid UpdateArticleRequest request);
+  void updateArticle(Long id, @Valid UpdateArticleRequest request);
+
+  void deleteArticle(Long id);
 }

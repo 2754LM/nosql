@@ -7,11 +7,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 class NosqlApplicationTests {
-	@Test
-	void jwtTest() {
-		User user = new User();
-		user.setName("cczu");
-		DB.save(user);
-	}
-
+  @Test
+  void jwtTest() {
+    User user = new User();
+    user.setName("cczu");
+    DB.save(user);
+  }
 }

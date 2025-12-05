@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Session {
-	private Long userId;
-	private Integer role;
-
+  private Long userId;
+  private Integer role;
 }

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class FollowStateResponse {
-	//操作结束后，true表示已关注，false表示未关注
-	@Schema(description = "操作结果，true表示已关注，false表示未关注")
-	private boolean following;
+  // 操作结束后，true表示已关注，false表示未关注
+  @Schema(description = "操作结果，true表示已关注，false表示未关注")
+  private boolean following;
 }

@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FollowingResponse {
-	// 关注者
-	@Schema(description = "关注者")
-	private UserInfoResponse following;
-	//是否互关
-	@Schema(description = "是否互关")
-	private boolean isMutual;
-}
+  // 关注者
+  @Schema(description = "关注者")
+  private UserInfoResponse following;
 
+  // 是否互关
+  @Schema(description = "是否互关")
+  private boolean isMutual;
+}
