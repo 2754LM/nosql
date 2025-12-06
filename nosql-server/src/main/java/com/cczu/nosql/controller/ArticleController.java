@@ -14,6 +14,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -93,5 +96,18 @@ public class ArticleController {
     log.info("删除文章，ID：{}", id);
     articleService.deleteArticle(id);
     return Result.success();
+  }
+
+  /**
+   * 获取热门文章
+   *
+   * @param limit 数量限制
+   * @return 热门文章列表
+   */
+  @GetMapping("/hot")
+  public Result<List<FullArticleResponse>> searchHotArticles(
+      @RequestParam(required = false, defaultValue = "10") @Valid @Min(1) @Max(100) int limit) {
+    log.info("获取热门文章，数量限制：{}", limit);
+    return Result.success(articleService.searchArticles(limit));
   }
 }

@@ -26,7 +26,7 @@ public class User extends BaseModel {
   @OneToMany(mappedBy = "toUser", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<UserFollow> followers;
 
-  @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "author")
   private List<Article> articles;
 
   public User(String name, String password) {

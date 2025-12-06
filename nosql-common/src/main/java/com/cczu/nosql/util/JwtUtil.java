@@ -16,7 +16,7 @@ public class JwtUtil {
     SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     long expMillis = System.currentTimeMillis() + duration.toMillis();
     Date exp = new Date(expMillis);
-
+    
     JwtBuilder builder =
         Jwts.builder().claims(claims).signWith(key, SignatureAlgorithm.HS256).expiration(exp);
 

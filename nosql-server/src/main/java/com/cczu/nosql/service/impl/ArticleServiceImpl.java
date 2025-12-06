@@ -2,6 +2,7 @@ package com.cczu.nosql.service.impl;
 
 import com.cczu.nosql.constant.BizCode;
 import com.cczu.nosql.entity.Article;
+import com.cczu.nosql.entity.User;
 import com.cczu.nosql.exception.BizException;
 import com.cczu.nosql.request.ArticleQueryParam;
 import com.cczu.nosql.request.CreateArticleRequest;
@@ -13,21 +14,23 @@ import com.cczu.nosql.service.ArticleService;
 import com.cczu.nosql.util.SessionContext;
 import io.ebean.DB;
 import io.ebean.PagedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ArticleServiceImpl implements ArticleService {
-  @Autowired ArticleCacheService articleCacheService;
+
+  @Autowired private ArticleCacheService articleCacheService;
 
   @Override
   public void create(CreateArticleRequest request) {
     Article article = new Article();
     article.setTitle(request.getTitle());
     article.setContent(request.getContent());
+    User author = DB.find(User.class, SessionContext.getSession().getUserId());
+    article.setAuthor(author);
     DB.save(article);
     articleCacheService.deleteArticleCache(article.getId());
   }
@@ -54,11 +57,9 @@ public class ArticleServiceImpl implements ArticleService {
     if (queryParam.getEndDate() != null) {
       expr.le("recTime", queryParam.getEndDate());
     }
-
     String orderBy =
         queryParam.getSort().getFieldName()
             + (Boolean.TRUE.equals(queryParam.getDesc()) ? " desc" : " asc");
-
     PagedList<Article> pagedList =
         expr.orderBy(orderBy)
             .setFirstRow((int) ((pageParam.getCurrent() - 1) * pageParam.getSize()))
@@ -82,9 +83,13 @@ public class ArticleServiceImpl implements ArticleService {
     if (article == null) {
       throw new BizException(BizCode.ARTICLE_NOT_FOUND);
     }
+    if (request.getTitle() != null && request.getTitle().isBlank()) {
+      throw new BizException(BizCode.NO_PERMISSION);
+    }
     article.setTitle(request.getTitle());
     article.setContent(request.getContent());
     DB.update(article);
+    articleCacheService.deleteArticleBaseCache(id);
   }
 
   @Override
@@ -93,10 +98,39 @@ public class ArticleServiceImpl implements ArticleService {
     if (article == null) {
       throw new BizException(BizCode.ARTICLE_NOT_FOUND);
     }
-    if (!Objects.equals(article.getAuthor().getId(), SessionContext.getSession().getUserId())) {
-      throw new BizException(BizCode.NO_PERMISSION);
-    }
     DB.delete(article);
     articleCacheService.deleteArticleCache(id);
+  }
+
+  @Override
+  public List<FullArticleResponse> searchArticles(int limit) {
+    if (limit <= 0) {
+      return List.of();
+    }
+    List<Article> cachedHotArticles = articleCacheService.getHotArticles(limit);
+
+    List<Article> finalArticles;
+    if (cachedHotArticles != null && !cachedHotArticles.isEmpty()) {
+      finalArticles = cachedHotArticles;
+    } else {
+      List<Article> dbArticles =
+          DB.find(Article.class).orderBy("likeCount desc").setMaxRows(limit).findList();
+
+      finalArticles = dbArticles;
+      articleCacheService.setHotArticles(dbArticles);
+      Map<Long, Article> articleMap =
+          dbArticles.stream().collect(Collectors.toMap(Article::getId, a -> a));
+      articleCacheService.batchSetArticle(articleMap);
+    }
+    List<Long> ids = finalArticles.stream().map(Article::getId).toList();
+    Map<Long, Long> likeCountMap = articleCacheService.batchGetLikeCount(ids);
+
+    List<FullArticleResponse> result = new java.util.ArrayList<>(finalArticles.size());
+    for (Article article : finalArticles) {
+      FullArticleResponse resp = new FullArticleResponse(article);
+      resp.setLikeCount(likeCountMap.getOrDefault(article.getId(), 0L));
+      result.add(resp);
+    }
+    return result;
   }
 }

@@ -1,4 +1,4 @@
-package com.cczu.nosql.Aspect;
+package com.cczu.nosql.aspect;
 
 import com.cczu.nosql.annotation.CheckUserPermission;
 import com.cczu.nosql.constant.BizCode;

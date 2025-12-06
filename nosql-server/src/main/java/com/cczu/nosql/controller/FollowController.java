@@ -1,6 +1,5 @@
 package com.cczu.nosql.controller;
 
-import com.cczu.nosql.annotation.CheckUserPermission;
 import com.cczu.nosql.request.PageParam;
 import com.cczu.nosql.response.FollowStateResponse;
 import com.cczu.nosql.response.FollowerResponse;
@@ -8,6 +7,7 @@ import com.cczu.nosql.response.FollowingResponse;
 import com.cczu.nosql.result.PageResult;
 import com.cczu.nosql.result.Result;
 import com.cczu.nosql.service.FollowService;
+import com.cczu.nosql.util.SessionContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -33,7 +33,6 @@ public class FollowController {
   /**
    * 用户是否关注目标用户
    *
-   * @param fromUserId 用户ID
    * @param toUserId 目标用户ID
    * @return 关注状态
    */
@@ -42,10 +41,9 @@ public class FollowController {
     @Parameter(name = "toUserId", description = "目标用户ID", in = ParameterIn.PATH, required = true)
   })
   @Operation(summary = "通用：某用户是否关注目标用户", description = "通用：某用户是否关注目标用户")
-  @CheckUserPermission(value = "fromUserId")
-  @GetMapping("/{fromUserId}/following/{toUserId}")
-  public Result<FollowStateResponse> isFollowing(
-      @PathVariable Long fromUserId, @PathVariable Long toUserId) {
+  @GetMapping("/{toUserId}")
+  public Result<FollowStateResponse> isFollowing(@PathVariable Long toUserId) {
+    Long fromUserId = SessionContext.getSession().getUserId();
     log.info("查询用户 {} 是否关注 用户 {}", fromUserId, toUserId);
     return Result.success(followService.exists(fromUserId, toUserId));
   }
@@ -53,7 +51,6 @@ public class FollowController {
   /**
    * 用户关注/取消关注目标用户
    *
-   * @param fromUserId 用户ID
    * @param toUserId 目标用户ID
    * @return 关注状态
    */
@@ -62,10 +59,9 @@ public class FollowController {
     @Parameter(name = "toUserId", description = "目标用户ID", in = ParameterIn.PATH, required = true)
   })
   @Operation(summary = "通用：某用户关注/取消关注目标用户", description = "通用：某用户关注/取消关注目标用户")
-  @CheckUserPermission(value = "fromUserId")
-  @PostMapping("/{fromUserId}/following/{toUserId}")
-  public Result<FollowStateResponse> followUser(
-      @PathVariable Long fromUserId, @PathVariable Long toUserId) {
+  @PostMapping("/{toUserId}")
+  public Result<FollowStateResponse> followUser(@PathVariable Long toUserId) {
+    Long fromUserId = SessionContext.getSession().getUserId();
     log.info("用户 {} 关注/取关 用户 {}", fromUserId, toUserId);
     return Result.success(followService.toggleFollow(fromUserId, toUserId));
   }

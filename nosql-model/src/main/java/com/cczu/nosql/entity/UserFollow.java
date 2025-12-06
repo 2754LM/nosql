@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = false)
 @Entity
 @Data
-@Table(name = "md_user_follow")
+@Table(name = "rel_user_follow")
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserFollow extends BaseModel {

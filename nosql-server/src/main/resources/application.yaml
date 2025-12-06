@@ -16,3 +16,7 @@ datasource:
   password: 123456
   url: jdbc:postgresql://localhost:5432/postgres
   driver: org.postgresql.Driver
+
+nosql:
+  scheduling:
+    article-cache-consistency-cron: "0 */30 * * * ?"

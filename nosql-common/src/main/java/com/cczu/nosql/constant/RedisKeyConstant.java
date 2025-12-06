@@ -10,6 +10,12 @@ public class RedisKeyConstant {
   /** 文章点赞排行榜 数据类型：ZSet */
   private static final String ARTICLE_RANKING_LIKES = "article:ranking:likes";
 
+  /** 点赞过此文章的用户集合 数据类型：Set */
+  private static final String ARTICLE_LIKED_USERS = "article:liked:users:";
+
+  /*redis消息队列 key */
+  private static final String ARTICLE_LIKE_QUEUE = "article:like:queue";
+
   public static String getArticleLikeCountKey(Long articleId) {
     return ARTICLE_LIKE_COUNT + articleId;
   }
@@ -20,5 +26,13 @@ public class RedisKeyConstant {
 
   public static String getArticleLikeRankingKey() {
     return ARTICLE_RANKING_LIKES;
+  }
+
+  public static String getArticleLikedUsersKey(Long articleId) {
+    return ARTICLE_LIKED_USERS + articleId;
+  }
+
+  public static String getArticleLikeQueueKey() {
+    return ARTICLE_LIKE_QUEUE;
   }
 }

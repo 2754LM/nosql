@@ -1,41 +1,45 @@
 package com.cczu.nosql.service.impl;
 
-import com.cczu.nosql.service.CacheService;
+import com.cczu.nosql.service.RedisService;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import org.redisson.api.*;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CacheServiceImpl implements CacheService {
-  final RedissonClient redissonClient;
+public class CacheServiceImpl implements RedisService {
+
+  private final RedissonClient redissonClient;
 
   public CacheServiceImpl(RedissonClient redissonClient) {
     this.redissonClient = redissonClient;
   }
 
+  /* -------- String / Value -------- */
+
   @Override
-  public Object getValue(String key) {
+  public Object get(String key) {
     RBucket<Object> bucket = redissonClient.getBucket(key);
     return bucket.get();
   }
 
   @Override
-  public <T> T getValue(String key, Class<T> clazz) {
-    Object val = getValue(key);
-    if (val == null) return null;
-    return clazz.cast(val);
+  public <T> T get(String key, Class<T> type) {
+    Object value = get(key);
+    if (value == null) return null;
+    return type.cast(value);
   }
 
   @Override
-  public <T> void setValue(String key, T value) {
+  public <T> void set(String key, T value) {
     RBucket<Object> bucket = redissonClient.getBucket(key);
     bucket.set(value);
   }
 
   @Override
-  public void deleteValue(String key) {
+  public boolean del(String key) {
     RBucket<Object> bucket = redissonClient.getBucket(key);
-    bucket.delete();
+    return bucket.delete();
   }
 
   @Override
@@ -45,106 +49,244 @@ public class CacheServiceImpl implements CacheService {
   }
 
   @Override
-  public long increment(String key, long delta) {
-    RAtomicLong atomic = redissonClient.getAtomicLong(key);
-    return atomic.addAndGet(delta);
+  public long incrBy(String key, long delta) {
+    RAtomicLong atomicLong = redissonClient.getAtomicLong(key);
+    return atomicLong.addAndGet(delta);
   }
 
   @Override
-  public long decrement(String key, long delta) {
-    RAtomicLong atomic = redissonClient.getAtomicLong(key);
-    return atomic.addAndGet(-Math.abs(delta));
+  public long decrBy(String key, long delta) {
+    RAtomicLong atomicLong = redissonClient.getAtomicLong(key);
+    return atomicLong.addAndGet(-Math.abs(delta));
   }
 
+  /* -------- Key 批量 -------- */
+
   @Override
-  public Set<String> keys(String pattern) {
-    RKeys rKeys = redissonClient.getKeys();
-    Iterable<String> it = rKeys.getKeysByPattern(pattern);
+  public Set<String> scan(String pattern) {
+    RKeys keys = redissonClient.getKeys();
+    Iterable<String> iterable = keys.getKeysByPattern(pattern);
     Set<String> result = new HashSet<>();
-    for (String k : it) {
-      result.add(k);
+    for (String key : iterable) {
+      result.add(key);
     }
     return result;
   }
 
   @Override
-  public void clear() {
-    redissonClient.getKeys().deleteByPattern("*");
+  public long clearAll() {
+    return redissonClient.getKeys().deleteByPattern("*");
   }
 
   @Override
-  public Map<String, Object> multiGet(List<String> keys) {
+  public Map<String, Object> mGet(List<String> keys) {
+    if (keys == null || keys.isEmpty()) {
+      return Collections.emptyMap();
+    }
     RBatch batch = redissonClient.createBatch();
-    Map<String, Object> result = new HashMap<>(keys.size());
     for (String key : keys) {
       batch.getBucket(key).getAsync();
     }
-    List<?> responses = batch.execute().getResponses();
+    BatchResult<?> batchResult = batch.execute();
+    List<?> responses = batchResult.getResponses();
+    Map<String, Object> result = new HashMap<>(keys.size());
     for (int i = 0; i < keys.size(); i++) {
-      String key = keys.get(i);
       Object value = responses.get(i);
       if (value != null) {
-        result.put(key, value);
+        result.put(keys.get(i), value);
       }
     }
     return result;
   }
 
   @Override
-  public <T> Map<String, T> multiGet(List<String> keys, Class<T> clazz) {
-    Map<String, Object> rawResult = multiGet(keys);
-    Map<String, T> result = new HashMap<>(rawResult.size());
-    for (Map.Entry<String, Object> entry : rawResult.entrySet()) {
-      if (entry.getValue() != null) {
-        result.put(entry.getKey(), clazz.cast(entry.getValue()));
-      }
+  public <T> Map<String, T> mGet(List<String> keys, Class<T> type) {
+    Map<String, Object> raw = mGet(keys);
+    Map<String, T> result = new HashMap<>(raw.size());
+    for (Map.Entry<String, Object> entry : raw.entrySet()) {
+      result.put(entry.getKey(), type.cast(entry.getValue()));
     }
     return result;
   }
 
   @Override
-  public <T> void multiSet(Map<String, T> keyValues) {
+  public <T> BatchResult<?> mSet(Map<String, T> keyValues) {
+    if (keyValues == null || keyValues.isEmpty()) {
+      return null;
+    }
     RBatch batch = redissonClient.createBatch();
     for (Map.Entry<String, T> entry : keyValues.entrySet()) {
       batch.getBucket(entry.getKey()).setAsync(entry.getValue());
     }
-    batch.execute();
+    return batch.execute();
+  }
+
+  /* -------- Sorted Set (ZSet) -------- */
+
+  @Override
+  public <T> boolean zAdd(String key, double score, T member) {
+    RScoredSortedSet<T> zset = redissonClient.getScoredSortedSet(key);
+    return zset.add(score, member);
   }
 
   @Override
-  public <T> boolean zAdd(String key, double score, T value) {
-    RScoredSortedSet<T> sortedSet = redissonClient.getScoredSortedSet(key);
-    return sortedSet.add(score, value);
+  public <T> long zAddAll(String key, Map<T, Double> scoreMembers) {
+    RScoredSortedSet<T> zset = redissonClient.getScoredSortedSet(key);
+    return zset.addAll(new HashMap<>(scoreMembers));
   }
 
   @Override
-  public <T> long zAdd(String key, Map<T, Double> scoreMembers) {
-    RScoredSortedSet<T> sortedSet = redissonClient.getScoredSortedSet(key);
-    Map<T, Double> scoreMap = new HashMap<>(scoreMembers);
-    return sortedSet.addAll(scoreMap);
-  }
-
-  @Override
-  public <T> List<T> zRange(String key, int start, int end, boolean reverse, Class<T> clazz) {
-    RScoredSortedSet<T> sortedSet = redissonClient.getScoredSortedSet(key);
-    Collection<T> collection;
-    if (reverse) {
-      collection = sortedSet.valueRangeReversed(start, end);
-    } else {
-      collection = sortedSet.valueRange(start, end);
-    }
-    return new ArrayList<>(collection);
+  public <T> List<T> zRangeByIndex(String key, int start, int end, boolean desc, Class<T> type) {
+    RScoredSortedSet<T> zset = redissonClient.getScoredSortedSet(key);
+    Collection<T> values = desc ? zset.valueRangeReversed(start, end) : zset.valueRange(start, end);
+    return new ArrayList<>(values);
   }
 
   @Override
   public long zCard(String key) {
-    RScoredSortedSet<Object> sortedSet = redissonClient.getScoredSortedSet(key);
-    return sortedSet.size();
+    RScoredSortedSet<Object> zset = redissonClient.getScoredSortedSet(key);
+    return zset.size();
   }
 
   @Override
-  public <T> double zincrby(String key, double increment, T member) {
-    RScoredSortedSet<T> sortedSet = redissonClient.getScoredSortedSet(key);
-    return sortedSet.addScore(member, increment);
+  public <T> double zIncrBy(String key, double delta, T member) {
+    RScoredSortedSet<T> zset = redissonClient.getScoredSortedSet(key);
+    return zset.addScore(member, delta);
+  }
+
+  @Override
+  public void zRem(String key, String member) {
+    RScoredSortedSet<String> zset = redissonClient.getScoredSortedSet(key);
+    zset.remove(member);
+  }
+
+  /* -------- Hash -------- */
+
+  @Override
+  public <T> Object hSet(String key, String field, T value) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    return map.put(field, value);
+  }
+
+  @Override
+  public <T> T hGet(String key, String field, Class<T> type) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    Object value = map.get(field);
+    if (value == null) return null;
+    return type.cast(value);
+  }
+
+  @Override
+  public Object hDel(String key, String field) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    return map.remove(field);
+  }
+
+  @Override
+  public boolean hExists(String key, String field) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    return map.containsKey(field);
+  }
+
+  @Override
+  public Map<String, Object> hGetAll(String key) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    return map.readAllMap();
+  }
+
+  @Override
+  public <T> Map<String, T> hGetAll(String key, Class<T> type) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    Map<String, Object> raw = map.readAllMap();
+    Map<String, T> result = new HashMap<>(raw.size());
+    for (Map.Entry<String, Object> entry : raw.entrySet()) {
+      result.put(entry.getKey(), type.cast(entry.getValue()));
+    }
+    return result;
+  }
+
+  @Override
+  public long hLen(String key) {
+    RMap<String, Object> map = redissonClient.getMap(key);
+    return map.size();
+  }
+
+  /* -------- Set -------- */
+
+  @Override
+  public <T> boolean sAdd(String key, T member) {
+    RSet<T> set = redissonClient.getSet(key);
+    return set.add(member);
+  }
+
+  @Override
+  public <T> boolean sRem(String key, T member) {
+    RSet<T> set = redissonClient.getSet(key);
+    return set.remove(member);
+  }
+
+  @Override
+  public <T> boolean sIsMember(String key, T member) {
+    RSet<T> set = redissonClient.getSet(key);
+    return set.contains(member);
+  }
+
+  @Override
+  public <T> Set<T> sMembers(String key, Class<T> type) {
+    RSet<T> set = redissonClient.getSet(key);
+    // 复制一份，避免暴露底层集合
+    return new HashSet<>(set);
+  }
+
+  /* -------- Queue (普通队列) -------- */
+
+  @Override
+  public <T> boolean queuePush(String key, T value) {
+    RQueue<T> queue = redissonClient.getQueue(key);
+    return queue.add(value);
+  }
+
+  @Override
+  public <T> T queuePoll(String key, Class<T> type) {
+    RQueue<T> queue = redissonClient.getQueue(key);
+    T value = queue.poll();
+    if (value == null) return null;
+    return type.cast(value);
+  }
+
+  @Override
+  public int queueSize(String key) {
+    RQueue<Object> queue = redissonClient.getQueue(key);
+    return queue.size();
+  }
+
+  @Override
+  public boolean queueClear(String key) {
+    RQueue<Object> queue = redissonClient.getQueue(key);
+    return queue.delete();
+  }
+
+  /* -------- BlockingQueue -------- */
+
+  @Override
+  public <T> boolean bQueuePush(String key, T value) {
+    RBlockingQueue<T> queue = redissonClient.getBlockingQueue(key);
+    return queue.add(value);
+  }
+
+  @Override
+  public <T> T bQueueTake(String key, Class<T> type) throws InterruptedException {
+    RBlockingQueue<T> queue = redissonClient.getBlockingQueue(key);
+    T value = queue.take();
+    return type.cast(value);
+  }
+
+  @Override
+  public <T> T bQueuePoll(String key, long timeout, TimeUnit unit, Class<T> type)
+      throws InterruptedException {
+    RBlockingQueue<T> queue = redissonClient.getBlockingQueue(key);
+    T value = queue.poll(timeout, unit);
+    if (value == null) return null;
+    return type.cast(value);
   }
 }

@@ -1,7 +1,9 @@
 package com.cczu.nosql.service.impl;
 
+import com.cczu.nosql.constant.BizCode;
 import com.cczu.nosql.entity.User;
 import com.cczu.nosql.entity.UserFollow;
+import com.cczu.nosql.exception.BizException;
 import com.cczu.nosql.request.PageParam;
 import com.cczu.nosql.response.FollowStateResponse;
 import com.cczu.nosql.response.FollowerResponse;
@@ -19,6 +21,9 @@ import org.springframework.stereotype.Service;
 public class FollowServiceImpl implements FollowService {
   @Override
   public FollowStateResponse toggleFollow(Long uid, Long toUserId) {
+    if (DB.find(User.class, toUserId) == null) {
+      throw new BizException(BizCode.USER_NOT_FOUND);
+    }
     boolean exists =
         DB.find(UserFollow.class).where().eq("fromUser.id", uid).eq("toUser.id", toUserId).exists();
     if (exists) {
