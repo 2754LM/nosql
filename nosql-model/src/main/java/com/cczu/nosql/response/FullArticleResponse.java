@@ -2,6 +2,7 @@ package com.cczu.nosql.response;
 
 import com.cczu.nosql.entity.Article;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
@@ -16,11 +17,17 @@ public class FullArticleResponse {
 
   private Long likeCount;
 
+  private LocalDateTime crtTime;
+
+  private LocalDateTime recTime;
+
   public FullArticleResponse(Article article) {
     this.id = article.getId();
     this.title = article.getTitle();
     this.content = article.getContent();
     this.author = new UserInfoResponse(article.getAuthor());
     this.likeCount = article.getLikeCount();
+    this.crtTime = article.getCrtTime();
+    this.recTime = article.getRecTime();
   }
 }

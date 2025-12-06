@@ -16,6 +16,9 @@ public class RedisKeyConstant {
   /*redis消息队列 key */
   private static final String ARTICLE_LIKE_QUEUE = "article:like:queue";
 
+  /** JWT存储前缀 */
+  private static final String JWT_KEY_PREFIX = "jwt:token:";
+
   public static String getArticleLikeCountKey(Long articleId) {
     return ARTICLE_LIKE_COUNT + articleId;
   }
@@ -34,5 +37,9 @@ public class RedisKeyConstant {
 
   public static String getArticleLikeQueueKey() {
     return ARTICLE_LIKE_QUEUE;
+  }
+
+  public static String getJwtKey(String token) {
+    return JWT_KEY_PREFIX + token;
   }
 }

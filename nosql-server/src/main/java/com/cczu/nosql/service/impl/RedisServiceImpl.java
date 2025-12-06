@@ -1,6 +1,7 @@
 package com.cczu.nosql.service.impl;
 
 import com.cczu.nosql.service.RedisService;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.redisson.api.*;
@@ -34,6 +35,12 @@ public class RedisServiceImpl implements RedisService {
   public <T> void set(String key, T value) {
     RBucket<Object> bucket = redissonClient.getBucket(key);
     bucket.set(value);
+  }
+
+  @Override
+  public <T> void set(String key, T value, Duration ttl) {
+    RBucket<Object> bucket = redissonClient.getBucket(key);
+    bucket.set(value, ttl);
   }
 
   @Override
@@ -99,15 +106,74 @@ public class RedisServiceImpl implements RedisService {
     return result;
   }
 
+  // java
   @Override
+  @SuppressWarnings("unchecked")
   public <T> Map<String, T> mGet(List<String> keys, Class<T> type) {
     Map<String, Object> raw = mGet(keys);
     Map<String, T> result = new HashMap<>(raw.size());
     for (Map.Entry<String, Object> entry : raw.entrySet()) {
-      result.put(entry.getKey(), type.cast(entry.getValue()));
+      Object value = entry.getValue();
+      if (value == null) continue;
+
+      try {
+        T converted = null;
+
+        // 数字类型安全转换
+        if (value instanceof Number num) {
+          if (type == Long.class) {
+            converted = (T) Long.valueOf(num.longValue());
+          } else if (type == Integer.class) {
+            converted = (T) Integer.valueOf(num.intValue());
+          } else if (type == Double.class) {
+            converted = (T) Double.valueOf(num.doubleValue());
+          } else if (type == Float.class) {
+            converted = (T) Float.valueOf(num.floatValue());
+          } else if (type == Short.class) {
+            converted = (T) Short.valueOf(num.shortValue());
+          } else if (type == Byte.class) {
+            converted = (T) Byte.valueOf(num.byteValue());
+          } else {
+            // 目标不是常见数字包装类型，尝试直接判断实例
+            if (type.isInstance(value)) {
+              converted = (T) value;
+            }
+          }
+        } else if (type.isInstance(value)) {
+          converted = (T) value;
+        } else {
+          // 回退：尝试通过字符串解析常见类型
+          String s = value.toString();
+          if (type == String.class) {
+            converted = (T) s;
+          } else if (type == Long.class) {
+            converted = (T) Long.valueOf(s);
+          } else if (type == Integer.class) {
+            converted = (T) Integer.valueOf(s);
+          } else if (type == Double.class) {
+            converted = (T) Double.valueOf(s);
+          } else if (type == Float.class) {
+            converted = (T) Float.valueOf(s);
+          } else if (type == Short.class) {
+            converted = (T) Short.valueOf(s);
+          } else if (type == Byte.class) {
+            converted = (T) Byte.valueOf(s);
+          } else {
+            // 无法转换，跳过该 key
+            continue;
+          }
+        }
+
+        if (converted != null) {
+          result.put(entry.getKey(), converted);
+        }
+      } catch (Exception ignore) {
+        continue;
+      }
     }
     return result;
   }
+
 
   @Override
   public <T> BatchResult<?> mSet(Map<String, T> keyValues) {

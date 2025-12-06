@@ -1,5 +1,7 @@
 package com.cczu.nosql.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -18,15 +20,19 @@ public class User extends BaseModel {
 
   private String name;
 
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
   private String password;
 
   @OneToMany(mappedBy = "fromUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
   private List<UserFollow> userFollows;
 
   @OneToMany(mappedBy = "toUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
   private List<UserFollow> followers;
 
   @OneToMany(mappedBy = "author")
+  @JsonIgnore
   private List<Article> articles;
 
   public User(String name, String password) {

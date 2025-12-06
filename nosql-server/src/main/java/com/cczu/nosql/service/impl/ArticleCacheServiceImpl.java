@@ -85,8 +85,9 @@ public class ArticleCacheServiceImpl implements ArticleCacheService {
 
   @Override
   public void setLikeCount(Long articleId, Long likeCount) {
-    cacheService.set(likeCountKey(articleId), likeCount);
-    cacheService.zAdd(likeRankingKey(), likeCount.doubleValue(), articleId.toString());
+    String val = likeCount == null ? "0" : likeCount.toString();
+    cacheService.set(likeCountKey(articleId), val);
+    cacheService.zAdd(likeRankingKey(), Double.parseDouble(val), articleId.toString());
   }
 
   @Override
@@ -118,12 +119,37 @@ public class ArticleCacheServiceImpl implements ArticleCacheService {
 
   /* ----------------------- 热门文章排行榜 ----------------------- */
 
+  // java
   @Override
   public List<Article> getHotArticles(int limit) {
     if (limit <= 0) {
       return List.of();
     }
-    return cacheService.zRangeByIndex(likeRankingKey(), 0, limit - 1, true, Article.class);
+    List<String> idStrs =
+        cacheService.zRangeByIndex(likeRankingKey(), 0, limit - 1, true, String.class);
+    if (idStrs == null || idStrs.isEmpty()) {
+      return List.of();
+    }
+    List<Long> ids = new ArrayList<>(idStrs.size());
+    for (String s : idStrs) {
+      if (s == null) continue;
+      try {
+        ids.add(Long.valueOf(s));
+      } catch (NumberFormatException ignore) {
+      }
+    }
+    if (ids.isEmpty()) {
+      return List.of();
+    }
+    Map<Long, Article> articleMap = batchGetArticle(ids);
+    List<Article> result = new ArrayList<>(ids.size());
+    for (Long id : ids) {
+      Article a = articleMap.get(id);
+      if (a != null) {
+        result.add(a);
+      }
+    }
+    return result;
   }
 
   @Override

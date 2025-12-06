@@ -1,7 +1,6 @@
 package com.cczu.nosql.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -18,6 +17,6 @@ public class RegisterRequest {
   // 密码
   @Schema(description = "密码")
   @NotBlank(message = "密码不能为空")
-  @Max(value = 16, message = "密码长度不能超过16个字符")
+  @Size(max = 16, message = "密码长度不能超过16个字符")
   private String password;
 }

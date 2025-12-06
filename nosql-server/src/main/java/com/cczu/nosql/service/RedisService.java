@@ -1,5 +1,6 @@
 package com.cczu.nosql.service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +37,16 @@ public interface RedisService {
    * @param <T> 值类型
    */
   <T> void set(String key, T value);
+
+  /**
+   * 设置指定 key 的值（带过期时间）。
+   *
+   * @param key Redis key
+   * @param value 要设置的值
+   * @param timeout 过期时间
+   * @param <T> 值类型
+   */
+  <T> void set(String key, T value, Duration timeout);
 
   /**
    * 删除指定 key。

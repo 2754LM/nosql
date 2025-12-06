@@ -13,6 +13,9 @@ public class UserInfoResponse {
   private String username;
 
   public UserInfoResponse(User user) {
+    if (user == null) {
+      return;
+    }
     this.userId = user.getId();
     this.username = user.getName();
   }

@@ -1,6 +1,7 @@
 package com.cczu.nosql.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Table(name = "rel_user_article_like")
 public class UserArticleLike {
-  private Long id;
+  @Id private Long id;
   private Long userId;
   private Long articleId;
 

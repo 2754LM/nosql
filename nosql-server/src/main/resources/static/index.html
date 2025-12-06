@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -312,6 +311,25 @@
             border-radius: 6px;
             margin-bottom: 16px;
         }
+
+        /* 高级搜索面板样式 */
+        .advanced-panel {
+            background: white;
+            border: 1px solid #e6e6e6;
+            padding: 10px;
+            border-radius: 8px;
+            margin-left: 12px;
+            display: none;
+            gap: 8px;
+        }
+
+        .advanced-panel input,
+        .advanced-panel select {
+            padding: 6px;
+            border: 1px solid #dadde1;
+            border-radius: 6px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -344,7 +362,7 @@
                 <input id="articleTitle" class="post-input" placeholder="文章标题" type="text">
                 <textarea id="articleContent" class="post-input" placeholder="分享你的想法..." rows="4"></textarea>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-outline" onclick="cancelCreate()">取消</button>
+                    <button class="btn btn-outline" onclick="clearCreateForm()">清空</button>
                     <button class="btn btn-primary" onclick="createArticle()">发布</button>
                 </div>
             </div>
@@ -390,18 +408,99 @@
     let currentToken = null;
     const API_BASE = '/api';
 
+    // 通用：处理认证过期，清本地并更新 UI
+    function handleAuthExpired() {
+        currentUser = null;
+        currentToken = null;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('token');
+
+        showLogin();
+        document.getElementById('createPostSection').style.display = 'none';
+        document.getElementById('articlesList').innerHTML = '<div class="loading">请登录后查看文章</div>';
+        document.getElementById('followingsList').innerHTML = '<div class="loading">请登录后查看关注列表</div>';
+        document.getElementById('followersList').innerHTML = '<div class="loading">请登录后查看粉丝列表</div>';
+        showError('登录已过期，请重新登录');
+    }
+
+    // 通用 fetch 封装：自动带 token，遇到 401 或 X-Auth-Clear 自动清理并抛错
+    async function apiFetch(input, init = {}) {
+        init.headers = init.headers || {};
+        const token = currentToken || localStorage.getItem('token') || '';
+        if (token) {
+            init.headers['access-token'] = token;
+        }
+
+        // 默认 content-type 除非是 FormData 或已手动设置
+        if (!init.headers['Content-Type'] && !(init.body instanceof FormData)) {
+            init.headers['Content-Type'] = init.headers['Content-Type'] || 'application/json';
+        }
+
+        let resp;
+        try {
+            resp = await fetch(input, init);
+        } catch (e) {
+            throw e;
+        }
+
+        const shouldClear = resp.status === 401 || resp.headers.get('X-Auth-Clear') === '1';
+        if (shouldClear) {
+            try {
+                handleAuthExpired();
+            } catch (ignore) {
+            }
+            throw new Error('Unauthorized');
+        }
+
+        return resp;
+    }
+
+    // 兼容后端返回：直接数组 或 {code:200, data:...}
+    async function readJson(resp) {
+        const json = await resp.json().catch(() => null);
+        if (Array.isArray(json)) {
+            return {code: 200, data: json};
+        }
+        if (json && typeof json.code === 'number') {
+            return json;
+        }
+        // 兜底：返回原始 json 放到 data
+        return {code: 200, data: json};
+    }
+
+    // 从不同形式的返回中抽取列表（records / data / 直接数组）
+    function extractList(result) {
+        if (!result) return [];
+        // 如果直接是数组
+        if (Array.isArray(result)) return result;
+        // 可能是 { code:..., data: ... } 或直接是一个对象包装 data
+        const d = result.data ?? result;
+        if (Array.isArray(d)) return d;
+        if (d && Array.isArray(d.records)) return d.records;
+        if (result && Array.isArray(result.records)) return result.records;
+        if (d && Array.isArray(d.items)) return d.items;
+        if (d && Array.isArray(d.list)) return d.list;
+        return [];
+    }
+
     // DOM加载完成后初始化
     document.addEventListener('DOMContentLoaded', function () {
-        // 检查本地存储中是否有登录信息
         const savedUser = localStorage.getItem('currentUser');
         const savedToken = localStorage.getItem('token');
 
         if (savedUser && savedToken) {
-            currentUser = JSON.parse(savedUser);
-            currentToken = savedToken;
-            updateUIAfterLogin();
+            try {
+                currentUser = JSON.parse(savedUser);
+                currentToken = savedToken;
+                updateUIAfterLogin();
+            } catch (e) {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('token');
+            }
         } else {
             loadHotArticles();
+            // 如果未登录也尝试加载公开文章（按需）
+            loadArticles();
         }
     });
 
@@ -416,23 +515,22 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/auth/login`, {
+            const resp = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password})
             });
-
-            const result = await response.json();
+            const result = await readJson(resp);
 
             if (result.code === 200) {
-                currentUser = result.data;
-                currentToken = result.data.token;
+                // 支持后端返回 data 或 data.user
+                const data = result.data || {};
+                currentUser = data.user || data;
+                currentToken = data.token || (data.accessToken) || (result.token);
 
                 // 保存到本地存储
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                localStorage.setItem('token', currentToken);
+                if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                if (currentToken) localStorage.setItem('token', currentToken);
 
                 updateUIAfterLogin();
                 showSuccess('登录成功！');
@@ -440,6 +538,7 @@
                 showError(result.message || '登录失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('网络错误，请稍后重试');
         }
     }
@@ -455,15 +554,12 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/auth/register`, {
+            const resp = await fetch(`${API_BASE}/auth/register`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password})
             });
-
-            const result = await response.json();
+            const result = await readJson(resp);
 
             if (result.code === 200) {
                 showSuccess('注册成功！请登录');
@@ -500,37 +596,19 @@
             `;
     }
 
-    // 登录后更新UI
     function updateUIAfterLogin() {
-        // 更新导航栏
         document.getElementById('authSection').innerHTML = `
-                <div class="user-info">
-                    <span class="username">${currentUser.username}</span>
-                    <button onclick="showCreatePost()" class="btn btn-primary">发布文章</button>
-                    <button onclick="logout()" class="btn btn-outline">退出</button>
-                </div>
-            `;
+            <div class="user-info">
+                <span class="username">${currentUser?.username || currentUser?.userName || '用户'}</span>
+                <button onclick="logout()" class="btn btn-outline">退出</button>
+            </div>
+        `;
 
-        // 显示创建文章区域
         document.getElementById('createPostSection').style.display = 'block';
-
-        // 加载数据
         loadArticles();
         loadHotArticles();
         loadFollowings();
         loadFollowers();
-    }
-
-    // 显示创建文章表单
-    function showCreatePost() {
-        document.getElementById('createPostSection').style.display = 'block';
-    }
-
-    // 取消创建文章
-    function cancelCreate() {
-        document.getElementById('articleTitle').value = '';
-        document.getElementById('articleContent').value = '';
-        document.getElementById('createPostSection').style.display = 'none';
     }
 
     // 创建文章
@@ -544,40 +622,58 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/article`, {
+            const resp = await apiFetch(`${API_BASE}/article`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentToken}`
-                },
                 body: JSON.stringify({title, content})
             });
-
-            const result = await response.json();
+            const result = await readJson(resp);
 
             if (result.code === 200) {
                 showSuccess('文章发布成功！');
-                cancelCreate();
+                document.getElementById('articleTitle').value = '';
+                document.getElementById('articleContent').value = '';
                 loadArticles();
             } else {
                 showError(result.message || '发布失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('网络错误，请稍后重试');
         }
     }
 
-    // 加载文章列表
+    // 加载文章列表（兼容后端可能直接返回数组）
     async function loadArticles() {
+        const container = document.getElementById('articlesList');
+        container.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const response = await fetch(`${API_BASE}/article/search?keyword=&current=1&size=20`);
-            const result = await response.json();
+            const response = await apiFetch(`${API_BASE}/article/search?current=1&size=20`);
+            const result = await readJson(response);
 
-            if (result.code === 200) {
-                displayArticles(result.data.records);
+            // 调试输出，便于定位后端返回结构
+            console.debug('loadArticles result:', result);
+
+            // 先尝试从 result 中抽取列表
+            let list = extractList(result);
+
+            // 兜底：如果抽取不到，但 result.data 本身是数组（readJson 有时没包装）
+            if ((!list || list.length === 0) && result && Array.isArray(result.data)) {
+                list = result.data;
+            }
+            // 兜底2：readJson 可能返回原始 json 放在 data 的内部字段 records
+            if ((!list || list.length === 0) && result && result.data && result.data.records && Array.isArray(result.data.records)) {
+                list = result.data.records;
+            }
+
+            if (list && list.length > 0) {
+                displayArticles(list);
+            } else {
+                container.innerHTML = '<div class="loading">暂无文章</div>';
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             console.error('加载文章失败:', error);
+            container.innerHTML = '<div class="loading">加载失败</div>';
         }
     }
 
@@ -590,48 +686,64 @@
             return;
         }
 
-        container.innerHTML = articles.map(article => `
-                <div class="article" data-id="${article.id}">
-                    <div class="article-header">
-                        <div class="author-avatar">${article.author?.username?.charAt(0) || 'U'}</div>
-                        <div class="author-info">
-                            <div class="author-name">${article.author?.username || '未知用户'}</div>
-                        </div>
-                        ${currentUser && currentUser.userId === article.author?.userId ? `
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="editArticle(${article.id})" class="btn btn-outline" style="font-size: 12px;">编辑</button>
-                                <button onclick="deleteArticle(${article.id})" class="btn btn-outline" style="font-size: 12px; color: #ff6b6b;">删除</button>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <h3 class="article-title">${article.title}</h3>
-                    <div class="article-content">${article.content}</div>
-                    <div class="article-actions">
-                        <button onclick="toggleLike(${article.id})" class="action-btn ${article.liked ? 'liked' : ''}">
-                            <span>👍</span>
-                            <span>${article.likeCount || 0}</span>
-                        </button>
-                        <button onclick="
-                        <button onclick="toggleFollow(${article.author?.userId})" class="action-btn ${article.following ? 'liked' : ''}">
-                            <span>👤</span>
-                            <span>${article.following ? '已关注' : '关注'}</span>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-    }
+        // 用 DOM API 构建可以减少模板插入时的语法错误影响
+        container.innerHTML = '';
+        articles.forEach(article => {
+            const el = document.createElement('div');
+            el.className = 'article';
+            el.dataset.id = article.id ?? '';
 
+            const authorName = (article.author && (article.author.username || article.author.userName)) || '未知用户';
+            const avatarChar = (authorName && authorName.charAt(0)) || 'U';
+            const likedClass = article.liked ? 'liked' : '';
+            const likeCount = (article.likeCount == null) ? 0 : article.likeCount;
+
+            el.innerHTML = `
+                <div class="article-header">
+                    <div class="author-avatar">${avatarChar}</div>
+                    <div class="author-info">
+                        <div class="author-name">${authorName}</div>
+                    </div>
+                    ${currentUser && (currentUser.userId === article.author?.userId || currentUser.id === article.author?.userId) ? `
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-outline" onclick="editArticle(${article.id})">编辑</button>
+                            <button class="btn btn-outline" onclick="deleteArticle(${article.id})">删除</button>
+                        </div>
+                    ` : ''}
+                </div>
+                <h3 class="article-title">${article.title || '无标题'}</h3>
+                <div class="article-content">${article.content || '无内容'}</div>
+                <div class="article-actions">
+                    <button onclick="toggleLike(${article.id})" class="action-btn ${likedClass}">
+                        <span>👍</span>
+                        <span>${likeCount}</span>
+                    </button>
+                    <button onclick="toggleFollow(${article.author?.userId})" class="action-btn ${article.following ? 'liked' : ''}">
+                        <span>👤</span>
+                        <span>${article.following ? '已关注' : '关注'}</span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
     // 加载热门文章
     async function loadHotArticles() {
+        const container = document.getElementById('hotArticles');
+        container.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const response = await fetch(`${API_BASE}/article/hot?limit=5`);
-            const result = await response.json();
-
-            if (result.code === 200) {
-                displayHotArticles(result.data);
+            const response = await apiFetch(`${API_BASE}/article/hot?limit=5`);
+            const result = await readJson(response);
+            const list = extractList(result);
+            if (list.length > 0) {
+                displayHotArticles(list);
+            } else {
+                container.innerHTML = '<div class="loading">暂无热门文章</div>';
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             console.error('加载热门文章失败:', error);
+            container.innerHTML = '<div class="loading">加载失败</div>';
         }
     }
 
@@ -647,7 +759,7 @@
         container.innerHTML = articles.map(article => `
                 <div class="hot-article">
                     <div class="hot-article-title">${article.title}</div>
-                    <div class="hot-article-likes">👍 ${article.likeCount || 0} 个赞</div>
+                    <div class="hot-article-likes">👍 ${article.likeCount ?? 0} 个赞</div>
                 </div>
             `).join('');
     }
@@ -655,16 +767,18 @@
     // 加载关注列表
     async function loadFollowings() {
         if (!currentUser) return;
-
+        const container = document.getElementById('followingsList');
+        container.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const response = await fetch(`${API_BASE}/follow/${currentUser.userId}/followings?current=1&size=5`);
-            const result = await response.json();
-
-            if (result.code === 200) {
-                displayFollowings(result.records);
-            }
+            const response = await apiFetch(`${API_BASE}/follow/${currentUser.userId}/followings?current=1&size=5`);
+            const result = await readJson(response);
+            const list = extractList(result);
+            if (list.length > 0) displayFollowings(list);
+            else container.innerHTML = '<div class="loading">暂无关注</div>';
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             console.error('加载关注列表失败:', error);
+            container.innerHTML = '<div class="loading">加载失败</div>';
         }
     }
 
@@ -679,7 +793,7 @@
 
         container.innerHTML = followings.map(follow => `
                 <div class="follow-item">
-                    <div class="follow-avatar">${follow.following?.username?.charAt(0) || 'U'}</div>
+                    <div class="follow-avatar">${(follow.following?.username || 'U').charAt(0)}</div>
                     <div class="follow-name">${follow.following?.username || '未知用户'}</div>
                     <button onclick="toggleFollow(${follow.following?.userId})" class="btn btn-outline follow-btn">
                         ${follow.mutual ? '互相关注' : '已关注'}
@@ -691,16 +805,18 @@
     // 加载粉丝列表
     async function loadFollowers() {
         if (!currentUser) return;
-
+        const container = document.getElementById('followersList');
+        container.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const response = await fetch(`${API_BASE}/follow/${currentUser.userId}/followers?current=1&size=5`);
-            const result = await response.json();
-
-            if (result.code === 200) {
-                displayFollowers(result.records);
-            }
+            const response = await apiFetch(`${API_BASE}/follow/${currentUser.userId}/followers?current=1&size=5`);
+            const result = await readJson(response);
+            const list = extractList(result);
+            if (list.length > 0) displayFollowers(list);
+            else container.innerHTML = '<div class="loading">暂无粉丝</div>';
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             console.error('加载粉丝列表失败:', error);
+            container.innerHTML = '<div class="loading">加载失败</div>';
         }
     }
 
@@ -715,7 +831,7 @@
 
         container.innerHTML = followers.map(follower => `
                 <div class="follow-item">
-                    <div class="follow-avatar">${follower.follower?.username?.charAt(0) || 'U'}</div>
+                    <div class="follow-avatar">${(follower.follower?.username || 'U').charAt(0)}</div>
                     <div class="follow-name">${follower.follower?.username || '未知用户'}</div>
                     <button onclick="toggleFollow(${follower.follower?.userId})" class="btn btn-primary follow-btn">
                         ${follower.mutual ? '互相关注' : '关注'}
@@ -724,7 +840,7 @@
             `).join('');
     }
 
-    // 点赞/取消点赞
+    // 点赞/取消点赞 —— 仅更新当前文章 DOM 的点赞状态和数量，刷新热榜
     async function toggleLike(articleId) {
         if (!currentUser) {
             showError('请先登录');
@@ -732,21 +848,34 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/like/${articleId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${currentToken}`
-                }
-            });
-
-            const result = await response.json();
-
+            const response = await apiFetch(`${API_BASE}/like/${articleId}`, {method: 'POST'});
+            const result = await readJson(response);
             if (result.code === 200) {
-                // 重新加载文章列表
-                loadArticles();
+                // 只更新当前文章 DOM 的点赞状态与数量
+                const articleEl = document.querySelector(`.article[data-id="${articleId}"]`);
+                if (articleEl) {
+                    const likeBtn = articleEl.querySelector('.article-actions .action-btn');
+                    if (likeBtn) {
+                        const spans = likeBtn.querySelectorAll('span');
+                        const countSpan = spans[1];
+                        let count = parseInt(countSpan.textContent || '0', 10);
+                        if (likeBtn.classList.contains('liked')) {
+                            likeBtn.classList.remove('liked');
+                            count = Math.max(0, count - 1);
+                        } else {
+                            likeBtn.classList.add('liked');
+                            count = count + 1;
+                        }
+                        countSpan.textContent = count;
+                    }
+                }
+                // 仅刷新热榜
                 loadHotArticles();
+            } else {
+                showError(result.message || '操作失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('操作失败');
         }
     }
@@ -764,22 +893,17 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/follow/${userId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${currentToken}`
-                }
-            });
-
-            const result = await response.json();
-
+            const response = await apiFetch(`${API_BASE}/follow/${userId}`, {method: 'POST'});
+            const result = await readJson(response);
             if (result.code === 200) {
-                // 重新加载关注和粉丝列表
                 loadFollowings();
                 loadFollowers();
                 loadArticles();
+            } else {
+                showError(result.message || '操作失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('操作失败');
         }
     }
@@ -787,10 +911,10 @@
     // 编辑文章
     function editArticle(articleId) {
         const articleElement = document.querySelector(`.article[data-id="${articleId}"]`);
+        if (!articleElement) return;
         const title = articleElement.querySelector('.article-title').textContent;
         const content = articleElement.querySelector('.article-content').textContent;
 
-        // 替换为编辑表单
         articleElement.innerHTML = `
                 <div class="create-post">
                     <h3 style="margin-bottom: 12px;">编辑文章</h3>
@@ -820,12 +944,8 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/article/${articleId}`, {
+            const response = await apiFetch(`${API_BASE}/article/${articleId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentToken}`
-                },
                 body: JSON.stringify({
                     title,
                     content,
@@ -833,8 +953,7 @@
                     authorId: currentUser.userId
                 })
             });
-
-            const result = await response.json();
+            const result = await readJson(response);
 
             if (result.code === 200) {
                 showSuccess('文章更新成功！');
@@ -843,6 +962,7 @@
                 showError(result.message || '更新失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('网络错误，请稍后重试');
         }
     }
@@ -854,14 +974,8 @@
         }
 
         try {
-            const response = await fetch(`${API_BASE}/article/${articleId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${currentToken}`
-                }
-            });
-
-            const result = await response.json();
+            const response = await apiFetch(`${API_BASE}/article/${articleId}`, {method: 'DELETE'});
+            const result = await readJson(response);
 
             if (result.code === 200) {
                 showSuccess('文章删除成功！');
@@ -871,6 +985,7 @@
                 showError(result.message || '删除失败');
             }
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             showError('网络错误，请稍后重试');
         }
     }
@@ -882,12 +997,10 @@
         localStorage.removeItem('currentUser');
         localStorage.removeItem('token');
 
-        // 重置UI
         showLogin();
         document.getElementById('createPostSection').style.display = 'none';
         loadHotArticles();
 
-        // 清空文章列表
         document.getElementById('articlesList').innerHTML = '<div class="loading">请登录后查看文章</div>';
         document.getElementById('followingsList').innerHTML = '<div class="loading">请登录后查看关注列表</div>';
         document.getElementById('followersList').innerHTML = '<div class="loading">请登录后查看粉丝列表</div>';
@@ -897,86 +1010,186 @@
 
     // 显示错误消息
     function showError(message) {
-        // 移除现有的错误消息
         const existingError = document.querySelector('.error');
-        if (existingError) {
-            existingError.remove();
-        }
+        if (existingError) existingError.remove();
 
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error';
         errorDiv.textContent = message;
 
-        // 插入到页面顶部
         const container = document.querySelector('.container');
         container.insertBefore(errorDiv, container.firstChild);
 
-        // 3秒后自动移除
         setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.remove();
-            }
+            if (errorDiv.parentNode) errorDiv.remove();
         }, 3000);
     }
 
     // 显示成功消息
     function showSuccess(message) {
-        // 移除现有的成功消息
         const existingSuccess = document.querySelector('.success');
-        if (existingSuccess) {
-            existingSuccess.remove();
-        }
+        if (existingSuccess) existingSuccess.remove();
 
         const successDiv = document.createElement('div');
         successDiv.className = 'success';
         successDiv.textContent = message;
 
-        // 插入到页面顶部
         const container = document.querySelector('.container');
         container.insertBefore(successDiv, container.firstChild);
 
-        // 3秒后自动移除
         setTimeout(() => {
-            if (successDiv.parentNode) {
-                successDiv.remove();
-            }
+            if (successDiv.parentNode) successDiv.remove();
         }, 3000);
     }
 
-    // 搜索文章
+    // 搜索文章（支持高级参数）
     async function searchArticles(keyword) {
-        try {
-            const response = await fetch(`${API_BASE}/article/search?keyword=${encodeURIComponent(keyword)}&current=1&size=20`);
-            const result = await response.json();
+        // 获取选择的字段，若未选则默认按标题和内容搜索
+        let fields = getSelectedSearchFields();
+        if (!fields || fields.length === 0) {
+            fields = ['title', 'content'];
+        }
 
-            if (result.code === 200) {
-                displayArticles(result.data.records);
+        let url = `${API_BASE}/article/search?current=1&size=20`;
+
+        const encoded = encodeURIComponent(keyword || '');
+
+        // 基础字段参数
+        if (fields.includes('title') && encoded) {
+            url += `&title=${encoded}`;
+        }
+        if (fields.includes('content') && encoded) {
+            url += `&content=${encoded}`;
+        }
+
+        // 高级搜索参数
+        const advId = document.getElementById('advId')?.value?.trim();
+        const advAuthorId = document.getElementById('advAuthorId')?.value?.trim();
+        const advStart = document.getElementById('advStartDate')?.value;
+        const advEnd = document.getElementById('advEndDate')?.value;
+        const advSort = document.getElementById('advSort')?.value;
+        const advDesc = document.getElementById('advDesc')?.checked;
+
+        if (advId) {
+            url += `&id=${encodeURIComponent(advId)}`;
+        }
+
+        if (advAuthorId) {
+            url += `&authorId=${encodeURIComponent(advAuthorId)}`;
+        } else {
+            // 如果没有显式 authorId，但用户选择了 author 字段，则用 authorName 兼容之前逻辑
+            if (fields.includes('author') && encoded) {
+                url += `&authorName=${encoded}`;
             }
+        }
+
+        if (advStart) {
+            // datetime-local 的值类似 "2025-12-06T14:30"，后端 LocalDateTime 通常能解析这种格式
+            url += `&startDate=${encodeURIComponent(advStart)}`;
+        }
+        if (advEnd) {
+            url += `&endDate=${encodeURIComponent(advEnd)}`;
+        }
+        if (advSort) {
+            url += `&sort=${encodeURIComponent(advSort)}`;
+        }
+        if (typeof advDesc !== 'undefined') {
+            url += `&desc=${advDesc}`;
+        }
+
+        // 如果没有任何关键词但用户只想按高级条件搜索，也允许
+        try {
+            const response = await apiFetch(url);
+            const result = await readJson(response);
+            const list = extractList(result);
+            if (list.length > 0) displayArticles(list);
+            else document.getElementById('articlesList').innerHTML = '<div class="loading">暂无结果</div>';
         } catch (error) {
+            if (error.message === 'Unauthorized') return;
             console.error('搜索失败:', error);
+            document.getElementById('articlesList').innerHTML = '<div class="loading">搜索失败</div>';
         }
     }
 
-    // 添加搜索功能到导航栏
+    // 清空创建表单
+    function clearCreateForm() {
+        document.getElementById('articleTitle').value = '';
+        document.getElementById('articleContent').value = '';
+    }
+
+    function getSelectedSearchFields() {
+        const nodes = document.querySelectorAll('.search-field:checked');
+        const vals = Array.from(nodes).map(n => n.value);
+        return vals;
+    }
+
+    // 添加搜索功能到导航栏（含高级面板）
     function addSearchBar() {
         const nav = document.querySelector('.nav');
         const searchBar = document.createElement('div');
         searchBar.style.marginLeft = '20px';
         searchBar.style.flex = '1';
-        searchBar.style.maxWidth = '400px';
+        searchBar.style.maxWidth = '720px';
         searchBar.innerHTML = `
-                <div style="position: relative;">
-                    <input type="text" id="searchInput" placeholder="搜索文章..."
+            <div style="position: relative; display: flex; gap: 8px; align-items: center;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="title" checked> 标题</label>
+                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="content" checked> 内容</label>
+                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="author"> 作者</label>
+                </div>
+                <div style="position: relative; flex: 1;">
+                    <input type="text" id="searchInput" placeholder="搜索文章（回车或点击🔍）"
                            style="width: 100%; padding: 8px 12px; border: 1px solid #dadde1; border-radius: 20px; background: #f0f2f5;"
-                           onkeypress="if(event.key === 'Enter') searchArticles(this.value)">
+                           onkeypress="if(event.key === 'Enter') searchArticles(document.getElementById('searchInput').value)">
                     <button onclick="searchArticles(document.getElementById('searchInput').value)"
                             style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">
                         🔍
                     </button>
                 </div>
-            `;
-
+                <button class="btn btn-outline" style="margin-left:8px; padding:6px 10px;" onclick="toggleAdvancedSearch()">高级</button>
+            </div>
+            <div id="advancedSearchPanel" class="advanced-panel">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input id="advId" class="post-input" placeholder="文章 ID" style="width:120px;" type="text">
+                    <input id="advAuthorId" class="post-input" placeholder="作者 ID" style="width:120px;" type="text">
+                    <label style="font-size:13px;">开始: <input id="advStartDate" type="datetime-local"></label>
+                    <label style="font-size:13px;">结束: <input id="advEndDate" type="datetime-local"></label>
+                    <label style="font-size:13px;">排序:
+                        <select id="advSort">
+                            <option value="UPDATE_TIME" selected>更新时间</option>
+                            <option value="CREATE_TIME">创建时间</option>
+                            <option value="TITLE">标题</option>
+                            <option value="LIKE_COUNT">点赞数</option>
+                        </select>
+                    </label>
+                    <label style="font-size:13px;"><input id="advDesc" type="checkbox" checked> 降序</label>
+                    <button class="btn btn-outline" onclick="clearAdvancedSearch()">清除高级</button>
+                </div>
+            </div>
+        `;
+        // 如果已有旧搜索栏，先移除或插入到合适位置
+        const existing = document.getElementById('customSearchBar');
+        if (existing) existing.remove();
+        searchBar.id = 'customSearchBar';
         nav.insertBefore(searchBar, nav.children[1]);
+    }
+
+    function toggleAdvancedSearch() {
+        const panel = document.getElementById('advancedSearchPanel');
+        if (!panel) return;
+        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function clearAdvancedSearch() {
+        const ids = ['advId', 'advAuthorId', 'advStartDate', 'advEndDate'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const advSort = document.getElementById('advSort');
+        if (advSort) advSort.value = 'UPDATE_TIME';
+        const advDesc = document.getElementById('advDesc');
+        if (advDesc) advDesc.checked = true;
     }
 
     // 初始化搜索栏

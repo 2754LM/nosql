@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -25,11 +27,12 @@ public class ArticleCacheConsistencyTask {
 
   /** 每 30 分钟执行一次文章缓存一致性校验任务。 */
   @Scheduled(cron = "${nosql.scheduling.article-cache-consistency-cron}")
+  @EventListener(classes = ContextRefreshedEvent.class)
   public void checkAndRepairArticleCache() {
     try {
       log.info("开始执行文章缓存一致性校验任务");
 
-      // 简单示例：一次性查出所有文章（数据量大时建议分页处理）
+      // 简单示例：一次性查出所有文章
       List<Article> allArticles = DB.find(Article.class).findList();
       if (allArticles.isEmpty()) {
         return;

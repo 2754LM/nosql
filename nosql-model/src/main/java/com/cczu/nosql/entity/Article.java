@@ -25,5 +25,5 @@ public class Article extends BaseModel {
   @JoinColumn(name = "author_id")
   private User author;
 
-  private Long likeCount;
+  private Long likeCount = 0L;
 }

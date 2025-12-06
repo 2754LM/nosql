@@ -69,14 +69,12 @@ public class ArticleLikeConsumer {
       return;
     }
 
-    // 1. 查文章
     Article article = DB.find(Article.class, articleId);
     if (article == null) {
       log.warn("文章不存在, articleId={}", articleId);
       return;
     }
 
-    // 2. 查现有用户-文章点赞关系
     UserArticleLike rel =
         DB.find(UserArticleLike.class)
             .where()
@@ -87,29 +85,24 @@ public class ArticleLikeConsumer {
     long current = article.getLikeCount() == null ? 0L : article.getLikeCount();
 
     if (isLike) {
-      // 点赞：不存在则新增关系并使点赞数 +1
       if (rel == null) {
         rel = new UserArticleLike(userId, articleId);
         DB.save(rel);
         article.setLikeCount(current + 1);
         DB.update(article);
       } else {
-        // 已存在关系则视为幂等，略过
         log.debug("重复点赞, userId={}, articleId={}", userId, articleId);
       }
     } else {
-      // 取消点赞：存在则删除关系并使点赞数 -1
       if (rel != null) {
         DB.delete(rel);
         article.setLikeCount(Math.max(0L, current - 1));
         DB.update(article);
       } else {
-        // 不存在关系则视为幂等取消
         log.debug("重复取消点赞, userId={}, articleId={}", userId, articleId);
       }
     }
 
-    // 4. 写点赞历史记录
     LikeHistory history = new LikeHistory(userId, articleId, isLike);
     DB.save(history);
   }

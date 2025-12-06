@@ -32,7 +32,8 @@ public class ArticleServiceImpl implements ArticleService {
     User author = DB.find(User.class, SessionContext.getSession().getUserId());
     article.setAuthor(author);
     DB.save(article);
-    articleCacheService.deleteArticleCache(article.getId());
+    articleCacheService.setArticle(article);
+    articleCacheService.setLikeCount(article.getId(), 0L);
   }
 
   @Override
@@ -115,7 +116,6 @@ public class ArticleServiceImpl implements ArticleService {
     } else {
       List<Article> dbArticles =
           DB.find(Article.class).orderBy("likeCount desc").setMaxRows(limit).findList();
-
       finalArticles = dbArticles;
       articleCacheService.setHotArticles(dbArticles);
       Map<Long, Article> articleMap =
