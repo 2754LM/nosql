@@ -7,11 +7,11 @@ import org.redisson.api.*;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CacheServiceImpl implements RedisService {
+public class RedisServiceImpl implements RedisService {
 
   private final RedissonClient redissonClient;
 
-  public CacheServiceImpl(RedissonClient redissonClient) {
+  public RedisServiceImpl(RedissonClient redissonClient) {
     this.redissonClient = redissonClient;
   }
 

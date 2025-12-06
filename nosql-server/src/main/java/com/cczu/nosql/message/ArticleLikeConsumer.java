@@ -11,6 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -30,6 +32,7 @@ public class ArticleLikeConsumer {
   @Autowired private RedisService redisService;
 
   @PostConstruct
+  @EventListener(classes = ContextRefreshedEvent.class)
   public void start() {
     consumerExecutor.submit(this::runConsumeLoop);
   }
@@ -47,7 +50,6 @@ public class ArticleLikeConsumer {
         log.info("消费文章点赞消息: {}", message);
         handleMessage(message);
       } catch (Exception e) {
-        // 消费端异常只记录日志，不中断循环
         log.error("文章点赞消息消费异常", e);
       }
     }

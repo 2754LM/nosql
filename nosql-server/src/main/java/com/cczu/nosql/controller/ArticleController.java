@@ -62,7 +62,7 @@ public class ArticleController {
   public PageResult<FullArticleResponse> searchArticles(
       @ModelAttribute @Valid ArticleQueryParam queryParam,
       @ModelAttribute @Valid PageParam pageParam) {
-    log.info("搜索文章，参数：{}", queryParam);
+    log.info("搜索文章，参数：{}, {}", queryParam, pageParam);
     return PageResult.success(articleService.searchArticles(queryParam, pageParam), pageParam);
   }
 
@@ -104,6 +104,8 @@ public class ArticleController {
    * @param limit 数量限制
    * @return 热门文章列表
    */
+  @Parameter(name = "limit", description = "数量限制", in = ParameterIn.QUERY, required = true)
+  @Operation(summary = "获取热门文章", description = "获取热门文章")
   @GetMapping("/hot")
   public Result<List<FullArticleResponse>> searchHotArticles(
       @RequestParam(required = false, defaultValue = "10") @Valid @Min(1) @Max(100) int limit) {

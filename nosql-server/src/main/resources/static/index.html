@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>文章社区</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1c1e21;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 头部导航 */
+        .header {
+            background: white;
+            border-bottom: 1px solid #dddfe2;
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1877f2;
+            text-decoration: none;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1877f2;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #166fe5;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid #dadde1;
+            color: #1c1e21;
+        }
+
+        .btn-outline:hover {
+            background: #f5f6f7;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .username {
+            font-weight: 500;
+        }
+
+        /* 主要内容区 */
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* 左侧：文章列表 */
+        .articles {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .article {
+            border-bottom: 1px solid #e4e6eb;
+            padding: 16px 0;
+        }
+
+        .article:last-child {
+            border-bottom: none;
+        }
+
+        .article-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e4e6eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #1877f2;
+        }
+
+        .author-info {
+            flex: 1;
+        }
+
+        .author-name {
+            font-weight: 600;
+            color: #050505;
+        }
+
+        .article-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #050505;
+        }
+
+        .article-content {
+            color: #65676b;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .article-actions {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            color: #65676b;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .action-btn:hover {
+            background: #f0f2f5;
+        }
+
+        .action-btn.liked {
+            color: #1877f2;
+        }
+
+        /* 右侧：侧边栏 */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #050505;
+        }
+
+        /* 热门文章 */
+        .hot-article {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .hot-article:last-child {
+            border-bottom: none;
+        }
+
+        .hot-article-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .hot-article-likes {
+            font-size: 12px;
+            color: #65676b;
+        }
+
+        /* 关注列表 */
+        .follow-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .follow-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e4e6eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1877f2;
+        }
+
+        .follow-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .follow-btn {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        /* 创建文章表单 */
+        .create-post {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .post-input:focus {
+            outline: none;
+            border-color: #1877f2;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: -1;
+            }
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #65676b;
+        }
+
+        /* 错误提示 */
+        .error {
+            background: #ffe3e3;
+            color: #c92a2a;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        /* 成功提示 */
+        .success {
+            background: #d3f9d8;
+            color: #2b8a3e;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+<!-- 头部导航 -->
+<header class="header">
+    <div class="container">
+        <nav class="nav">
+            <a class="logo" href="#">文章社区</a>
+            <div id="authSection" class="auth-buttons">
+                <!-- 登录前显示 -->
+                <div class="login-form" style="display: flex; gap: 10px;">
+                    <input id="username" class="btn-outline" placeholder="用户名" type="text">
+                    <input id="password" class="btn-outline" placeholder="密码" type="password">
+                    <button class="btn btn-primary" onclick="login()">登录</button>
+                    <button class="btn btn-outline" onclick="showRegister()">注册</button>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<!-- 主要内容区 -->
+<main class="container">
+    <div class="main">
+        <!-- 左侧：文章列表 -->
+        <div class="left-column">
+            <!-- 创建文章 -->
+            <div id="createPostSection" class="create-post" style="display: none;">
+                <h3 style="margin-bottom: 12px;">发布文章</h3>
+                <input id="articleTitle" class="post-input" placeholder="文章标题" type="text">
+                <textarea id="articleContent" class="post-input" placeholder="分享你的想法..." rows="4"></textarea>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-outline" onclick="cancelCreate()">取消</button>
+                    <button class="btn btn-primary" onclick="createArticle()">发布</button>
+                </div>
+            </div>
+
+            <!-- 文章列表 -->
+            <div id="articlesList" class="articles">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 右侧：侧边栏 -->
+        <div class="sidebar">
+            <!-- 热门文章 -->
+            <div class="card">
+                <h3 class="card-title">热门文章</h3>
+                <div id="hotArticles">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 关注列表 -->
+            <div class="card">
+                <h3 class="card-title">关注列表</h3>
+                <div id="followingsList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 粉丝列表 -->
+            <div class="card">
+                <h3 class="card-title">粉丝列表</h3>
+                <div id="followersList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // 全局变量
+    let currentUser = null;
+    let currentToken = null;
+    const API_BASE = '/api';
+
+    // DOM加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 检查本地存储中是否有登录信息
+        const savedUser = localStorage.getItem('currentUser');
+        const savedToken = localStorage.getItem('token');
+
+        if (savedUser && savedToken) {
+            currentUser = JSON.parse(savedUser);
+            currentToken = savedToken;
+            updateUIAfterLogin();
+        } else {
+            loadHotArticles();
+        }
+    });
+
+    // 登录函数
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            showError('请输入用户名和密码');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({username, password})
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                currentUser = result.data;
+                currentToken = result.data.token;
+
+                // 保存到本地存储
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('token', currentToken);
+
+                updateUIAfterLogin();
+                showSuccess('登录成功！');
+            } else {
+                showError(result.message || '登录失败');
+            }
+        } catch (error) {
+            showError('网络错误，请稍后重试');
+        }
+    }
+
+    // 注册函数
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+
+        if (!username || !password) {
+            showError('请输入用户名和密码');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({username, password})
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                showSuccess('注册成功！请登录');
+                showLogin();
+            } else {
+                showError(result.message || '注册失败');
+            }
+        } catch (error) {
+            showError('网络错误，请稍后重试');
+        }
+    }
+
+    // 显示注册表单
+    function showRegister() {
+        document.getElementById('authSection').innerHTML = `
+                <div class="login-form" style="display: flex; gap: 10px;">
+                    <input type="text" id="regUsername" placeholder="用户名" class="btn-outline">
+                    <input type="password" id="regPassword" placeholder="密码" class="btn-outline">
+                    <button onclick="register()" class="btn btn-primary">注册</button>
+                    <button onclick="showLogin()" class="btn btn-outline">返回登录</button>
+                </div>
+            `;
+    }
+
+    // 显示登录表单
+    function showLogin() {
+        document.getElementById('authSection').innerHTML = `
+                <div class="login-form" style="display: flex; gap: 10px;">
+                    <input type="text" id="username" placeholder="用户名" class="btn-outline">
+                    <input type="password" id="password" placeholder="密码" class="btn-outline">
+                    <button onclick="login()" class="btn btn-primary">登录</button>
+                    <button onclick="showRegister()" class="btn btn-outline">注册</button>
+                </div>
+            `;
+    }
+
+    // 登录后更新UI
+    function updateUIAfterLogin() {
+        // 更新导航栏
+        document.getElementById('authSection').innerHTML = `
+                <div class="user-info">
+                    <span class="username">${currentUser.username}</span>
+                    <button onclick="showCreatePost()" class="btn btn-primary">发布文章</button>
+                    <button onclick="logout()" class="btn btn-outline">退出</button>
+                </div>
+            `;
+
+        // 显示创建文章区域
+        document.getElementById('createPostSection').style.display = 'block';
+
+        // 加载数据
+        loadArticles();
+        loadHotArticles();
+        loadFollowings();
+        loadFollowers();
+    }
+
+    // 显示创建文章表单
+    function showCreatePost() {
+        document.getElementById('createPostSection').style.display = 'block';
+    }
+
+    // 取消创建文章
+    function cancelCreate() {
+        document.getElementById('articleTitle').value = '';
+        document.getElementById('articleContent').value = '';
+        document.getElementById('createPostSection').style.display = 'none';
+    }
+
+    // 创建文章
+    async function createArticle() {
+        const title = document.getElementById('articleTitle').value;
+        const content = document.getElementById('articleContent').value;
+
+        if (!title || !content) {
+            showError('请填写标题和内容');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/article`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify({title, content})
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                showSuccess('文章发布成功！');
+                cancelCreate();
+                loadArticles();
+            } else {
+                showError(result.message || '发布失败');
+            }
+        } catch (error) {
+            showError('网络错误，请稍后重试');
+        }
+    }
+
+    // 加载文章列表
+    async function loadArticles() {
+        try {
+            const response = await fetch(`${API_BASE}/article/search?keyword=&current=1&size=20`);
+            const result = await response.json();
+
+            if (result.code === 200) {
+                displayArticles(result.data.records);
+            }
+        } catch (error) {
+            console.error('加载文章失败:', error);
+        }
+    }
+
+    // 显示文章列表
+    function displayArticles(articles) {
+        const container = document.getElementById('articlesList');
+
+        if (!articles || articles.length === 0) {
+            container.innerHTML = '<div class="loading">暂无文章</div>';
+            return;
+        }
+
+        container.innerHTML = articles.map(article => `
+                <div class="article" data-id="${article.id}">
+                    <div class="article-header">
+                        <div class="author-avatar">${article.author?.username?.charAt(0) || 'U'}</div>
+                        <div class="author-info">
+                            <div class="author-name">${article.author?.username || '未知用户'}</div>
+                        </div>
+                        ${currentUser && currentUser.userId === article.author?.userId ? `
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="editArticle(${article.id})" class="btn btn-outline" style="font-size: 12px;">编辑</button>
+                                <button onclick="deleteArticle(${article.id})" class="btn btn-outline" style="font-size: 12px; color: #ff6b6b;">删除</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <h3 class="article-title">${article.title}</h3>
+                    <div class="article-content">${article.content}</div>
+                    <div class="article-actions">
+                        <button onclick="toggleLike(${article.id})" class="action-btn ${article.liked ? 'liked' : ''}">
+                            <span>👍</span>
+                            <span>${article.likeCount || 0}</span>
+                        </button>
+                        <button onclick="
+                        <button onclick="toggleFollow(${article.author?.userId})" class="action-btn ${article.following ? 'liked' : ''}">
+                            <span>👤</span>
+                            <span>${article.following ? '已关注' : '关注'}</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    // 加载热门文章
+    async function loadHotArticles() {
+        try {
+            const response = await fetch(`${API_BASE}/article/hot?limit=5`);
+            const result = await response.json();
+
+            if (result.code === 200) {
+                displayHotArticles(result.data);
+            }
+        } catch (error) {
+            console.error('加载热门文章失败:', error);
+        }
+    }
+
+    // 显示热门文章
+    function displayHotArticles(articles) {
+        const container = document.getElementById('hotArticles');
+
+        if (!articles || articles.length === 0) {
+            container.innerHTML = '<div class="loading">暂无热门文章</div>';
+            return;
+        }
+
+        container.innerHTML = articles.map(article => `
+                <div class="hot-article">
+                    <div class="hot-article-title">${article.title}</div>
+                    <div class="hot-article-likes">👍 ${article.likeCount || 0} 个赞</div>
+                </div>
+            `).join('');
+    }
+
+    // 加载关注列表
+    async function loadFollowings() {
+        if (!currentUser) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/follow/${currentUser.userId}/followings?current=1&size=5`);
+            const result = await response.json();
+
+            if (result.code === 200) {
+                displayFollowings(result.records);
+            }
+        } catch (error) {
+            console.error('加载关注列表失败:', error);
+        }
+    }
+
+    // 显示关注列表
+    function displayFollowings(followings) {
+        const container = document.getElementById('followingsList');
+
+        if (!followings || followings.length === 0) {
+            container.innerHTML = '<div class="loading">暂无关注</div>';
+            return;
+        }
+
+        container.innerHTML = followings.map(follow => `
+                <div class="follow-item">
+                    <div class="follow-avatar">${follow.following?.username?.charAt(0) || 'U'}</div>
+                    <div class="follow-name">${follow.following?.username || '未知用户'}</div>
+                    <button onclick="toggleFollow(${follow.following?.userId})" class="btn btn-outline follow-btn">
+                        ${follow.mutual ? '互相关注' : '已关注'}
+                    </button>
+                </div>
+            `).join('');
+    }
+
+    // 加载粉丝列表
+    async function loadFollowers() {
+        if (!currentUser) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/follow/${currentUser.userId}/followers?current=1&size=5`);
+            const result = await response.json();
+
+            if (result.code === 200) {
+                displayFollowers(result.records);
+            }
+        } catch (error) {
+            console.error('加载粉丝列表失败:', error);
+        }
+    }
+
+    // 显示粉丝列表
+    function displayFollowers(followers) {
+        const container = document.getElementById('followersList');
+
+        if (!followers || followers.length === 0) {
+            container.innerHTML = '<div class="loading">暂无粉丝</div>';
+            return;
+        }
+
+        container.innerHTML = followers.map(follower => `
+                <div class="follow-item">
+                    <div class="follow-avatar">${follower.follower?.username?.charAt(0) || 'U'}</div>
+                    <div class="follow-name">${follower.follower?.username || '未知用户'}</div>
+                    <button onclick="toggleFollow(${follower.follower?.userId})" class="btn btn-primary follow-btn">
+                        ${follower.mutual ? '互相关注' : '关注'}
+                    </button>
+                </div>
+            `).join('');
+    }
+
+    // 点赞/取消点赞
+    async function toggleLike(articleId) {
+        if (!currentUser) {
+            showError('请先登录');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/like/${articleId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${currentToken}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                // 重新加载文章列表
+                loadArticles();
+                loadHotArticles();
+            }
+        } catch (error) {
+            showError('操作失败');
+        }
+    }
+
+    // 关注/取消关注
+    async function toggleFollow(userId) {
+        if (!currentUser) {
+            showError('请先登录');
+            return;
+        }
+
+        if (userId === currentUser.userId) {
+            showError('不能关注自己');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/follow/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${currentToken}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                // 重新加载关注和粉丝列表
+                loadFollowings();
+                loadFollowers();
+                loadArticles();
+            }
+        } catch (error) {
+            showError('操作失败');
+        }
+    }
+
+    // 编辑文章
+    function editArticle(articleId) {
+        const articleElement = document.querySelector(`.article[data-id="${articleId}"]`);
+        const title = articleElement.querySelector('.article-title').textContent;
+        const content = articleElement.querySelector('.article-content').textContent;
+
+        // 替换为编辑表单
+        articleElement.innerHTML = `
+                <div class="create-post">
+                    <h3 style="margin-bottom: 12px;">编辑文章</h3>
+                    <input type="text" id="editTitle" value="${title}" class="post-input">
+                    <textarea id="editContent" rows="4" class="post-input">${content}</textarea>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="cancelEdit(${articleId})" class="btn btn-outline">取消</button>
+                        <button onclick="saveArticle(${articleId})" class="btn btn-primary">保存</button>
+                    </div>
+                </div>
+            `;
+    }
+
+    // 取消编辑
+    function cancelEdit(articleId) {
+        loadArticles();
+    }
+
+    // 保存文章编辑
+    async function saveArticle(articleId) {
+        const title = document.getElementById('editTitle').value;
+        const content = document.getElementById('editContent').value;
+
+        if (!title || !content) {
+            showError('请填写标题和内容');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/article/${articleId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    id: articleId,
+                    authorId: currentUser.userId
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                showSuccess('文章更新成功！');
+                loadArticles();
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            showError('网络错误，请稍后重试');
+        }
+    }
+
+    // 删除文章
+    async function deleteArticle(articleId) {
+        if (!confirm('确定要删除这篇文章吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/article/${articleId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentToken}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.code === 200) {
+                showSuccess('文章删除成功！');
+                loadArticles();
+                loadHotArticles();
+            } else {
+                showError(result.message || '删除失败');
+            }
+        } catch (error) {
+            showError('网络错误，请稍后重试');
+        }
+    }
+
+    // 退出登录
+    function logout() {
+        currentUser = null;
+        currentToken = null;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('token');
+
+        // 重置UI
+        showLogin();
+        document.getElementById('createPostSection').style.display = 'none';
+        loadHotArticles();
+
+        // 清空文章列表
+        document.getElementById('articlesList').innerHTML = '<div class="loading">请登录后查看文章</div>';
+        document.getElementById('followingsList').innerHTML = '<div class="loading">请登录后查看关注列表</div>';
+        document.getElementById('followersList').innerHTML = '<div class="loading">请登录后查看粉丝列表</div>';
+
+        showSuccess('已退出登录');
+    }
+
+    // 显示错误消息
+    function showError(message) {
+        // 移除现有的错误消息
+        const existingError = document.querySelector('.error');
+        if (existingError) {
+            existingError.remove();
+        }
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error';
+        errorDiv.textContent = message;
+
+        // 插入到页面顶部
+        const container = document.querySelector('.container');
+        container.insertBefore(errorDiv, container.firstChild);
+
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 3000);
+    }
+
+    // 显示成功消息
+    function showSuccess(message) {
+        // 移除现有的成功消息
+        const existingSuccess = document.querySelector('.success');
+        if (existingSuccess) {
+            existingSuccess.remove();
+        }
+
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success';
+        successDiv.textContent = message;
+
+        // 插入到页面顶部
+        const container = document.querySelector('.container');
+        container.insertBefore(successDiv, container.firstChild);
+
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.remove();
+            }
+        }, 3000);
+    }
+
+    // 搜索文章
+    async function searchArticles(keyword) {
+        try {
+            const response = await fetch(`${API_BASE}/article/search?keyword=${encodeURIComponent(keyword)}&current=1&size=20`);
+            const result = await response.json();
+
+            if (result.code === 200) {
+                displayArticles(result.data.records);
+            }
+        } catch (error) {
+            console.error('搜索失败:', error);
+        }
+    }
+
+    // 添加搜索功能到导航栏
+    function addSearchBar() {
+        const nav = document.querySelector('.nav');
+        const searchBar = document.createElement('div');
+        searchBar.style.marginLeft = '20px';
+        searchBar.style.flex = '1';
+        searchBar.style.maxWidth = '400px';
+        searchBar.innerHTML = `
+                <div style="position: relative;">
+                    <input type="text" id="searchInput" placeholder="搜索文章..."
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #dadde1; border-radius: 20px; background: #f0f2f5;"
+                           onkeypress="if(event.key === 'Enter') searchArticles(this.value)">
+                    <button onclick="searchArticles(document.getElementById('searchInput').value)"
+                            style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">
+                        🔍
+                    </button>
+                </div>
+            `;
+
+        nav.insertBefore(searchBar, nav.children[1]);
+    }
+
+    // 初始化搜索栏
+    addSearchBar();
+</script>
+</body>
+</html>
