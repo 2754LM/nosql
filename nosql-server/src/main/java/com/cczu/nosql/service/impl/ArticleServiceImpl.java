@@ -39,13 +39,24 @@ public class ArticleServiceImpl implements ArticleService {
   @Override
   public List<FullArticleResponse> searchArticles(
       ArticleQueryParam queryParam, PageParam pageParam) {
+
     var expr = DB.find(Article.class).where();
-    if (queryParam.getTitle() != null && !queryParam.getTitle().isBlank()) {
+
+    boolean hasTitleSearch = queryParam.getTitle() != null && !queryParam.getTitle().isBlank();
+    boolean hasContentSearch =
+        queryParam.getContent() != null && !queryParam.getContent().isBlank();
+
+    if (hasTitleSearch && hasContentSearch) {
+      // 明确使用 OR，将标题与内容的匹配放入同一个 OR 分组
+      String titlePattern = "%" + queryParam.getTitle().trim() + "%";
+      String contentPattern = "%" + queryParam.getContent().trim() + "%";
+      expr.or().ilike("title", titlePattern).ilike("content", contentPattern).endOr();
+    } else if (hasTitleSearch) {
       expr.ilike("title", "%" + queryParam.getTitle().trim() + "%");
-    }
-    if (queryParam.getContent() != null && !queryParam.getContent().isBlank()) {
+    } else if (hasContentSearch) {
       expr.ilike("content", "%" + queryParam.getContent().trim() + "%");
     }
+
     if (queryParam.getAuthorId() != null) {
       expr.eq("author.id", queryParam.getAuthorId());
     }

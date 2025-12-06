@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -471,9 +472,7 @@
     // 从不同形式的返回中抽取列表（records / data / 直接数组）
     function extractList(result) {
         if (!result) return [];
-        // 如果直接是数组
         if (Array.isArray(result)) return result;
-        // 可能是 { code:..., data: ... } 或直接是一个对象包装 data
         const d = result.data ?? result;
         if (Array.isArray(d)) return d;
         if (d && Array.isArray(d.records)) return d.records;
@@ -523,12 +522,10 @@
             const result = await readJson(resp);
 
             if (result.code === 200) {
-                // 支持后端返回 data 或 data.user
                 const data = result.data || {};
                 currentUser = data.user || data;
                 currentToken = data.token || (data.accessToken) || (result.token);
 
-                // 保存到本地存储
                 if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 if (currentToken) localStorage.setItem('token', currentToken);
 
@@ -543,7 +540,7 @@
         }
     }
 
-    // 注册函数
+    // 注册函数：注册成功后尝试自动登录（直接进入）
     async function register() {
         const username = document.getElementById('regUsername').value;
         const password = document.getElementById('regPassword').value;
@@ -562,7 +559,28 @@
             const result = await readJson(resp);
 
             if (result.code === 200) {
-                showSuccess('注册成功！请登录');
+                // 尝试自动登录
+                try {
+                    const loginResp = await fetch(`${API_BASE}/auth/login`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username, password})
+                    });
+                    const loginResult = await readJson(loginResp);
+                    if (loginResult.code === 200) {
+                        const data = loginResult.data || {};
+                        currentUser = data.user || data;
+                        currentToken = data.token || data.accessToken || loginResult.token;
+                        if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        if (currentToken) localStorage.setItem('token', currentToken);
+                        updateUIAfterLogin();
+                        showSuccess('注册并登录成功！');
+                        return;
+                    }
+                } catch (e) {
+                    // 若自动登录失败，回到登录提示手动登录
+                }
+                showSuccess('注册成功，请登录');
                 showLogin();
             } else {
                 showError(result.message || '注册失败');
@@ -572,13 +590,13 @@
         }
     }
 
-    // 显示注册表单
+    // 显示注册表单（一级，与登录同级）
     function showRegister() {
         document.getElementById('authSection').innerHTML = `
                 <div class="login-form" style="display: flex; gap: 10px;">
                     <input type="text" id="regUsername" placeholder="用户名" class="btn-outline">
                     <input type="password" id="regPassword" placeholder="密码" class="btn-outline">
-                    <button onclick="register()" class="btn btn-primary">注册</button>
+                    <button onclick="register()" class="btn btn-primary">注册并登录</button>
                     <button onclick="showLogin()" class="btn btn-outline">返回登录</button>
                 </div>
             `;
@@ -650,17 +668,13 @@
             const response = await apiFetch(`${API_BASE}/article/search?current=1&size=20`);
             const result = await readJson(response);
 
-            // 调试输出，便于定位后端返回结构
             console.debug('loadArticles result:', result);
 
-            // 先尝试从 result 中抽取列表
             let list = extractList(result);
 
-            // 兜底：如果抽取不到，但 result.data 本身是数组（readJson 有时没包装）
             if ((!list || list.length === 0) && result && Array.isArray(result.data)) {
                 list = result.data;
             }
-            // 兜底2：readJson 可能返回原始 json 放在 data 的内部字段 records
             if ((!list || list.length === 0) && result && result.data && result.data.records && Array.isArray(result.data.records)) {
                 list = result.data.records;
             }
@@ -686,7 +700,6 @@
             return;
         }
 
-        // 用 DOM API 构建可以减少模板插入时的语法错误影响
         container.innerHTML = '';
         articles.forEach(article => {
             const el = document.createElement('div');
@@ -727,6 +740,7 @@
             container.appendChild(el);
         });
     }
+
     // 加载热门文章
     async function loadHotArticles() {
         const container = document.getElementById('hotArticles');
@@ -851,7 +865,6 @@
             const response = await apiFetch(`${API_BASE}/like/${articleId}`, {method: 'POST'});
             const result = await readJson(response);
             if (result.code === 200) {
-                // 只更新当前文章 DOM 的点赞状态与数量
                 const articleEl = document.querySelector(`.article[data-id="${articleId}"]`);
                 if (articleEl) {
                     const likeBtn = articleEl.querySelector('.article-actions .action-btn');
@@ -869,7 +882,6 @@
                         countSpan.textContent = count;
                     }
                 }
-                // 仅刷新热榜
                 loadHotArticles();
             } else {
                 showError(result.message || '操作失败');
@@ -1042,24 +1054,26 @@
         }, 3000);
     }
 
-    // 搜索文章（支持高级参数）
+    // 搜索文章（简化：默认同时按标题与内容搜索，保留高级面板用于筛选 id/author/date/sort）
     async function searchArticles(keyword) {
-        // 获取选择的字段，若未选则默认按标题和内容搜索
-        let fields = getSelectedSearchFields();
-        if (!fields || fields.length === 0) {
-            fields = ['title', 'content'];
-        }
+        const container = document.getElementById('articlesList');
+        container.innerHTML = '<div class="loading">加载中...</div>';
 
         let url = `${API_BASE}/article/search?current=1&size=20`;
 
-        const encoded = encodeURIComponent(keyword || '');
+        const raw = (keyword || '').trim();
+        const encoded = encodeURIComponent(raw);
 
-        // 基础字段参数
-        if (fields.includes('title') && encoded) {
-            url += `&title=${encoded}`;
-        }
-        if (fields.includes('content') && encoded) {
-            url += `&content=${encoded}`;
+        const scope = document.getElementById('searchScope')?.value || 'both';
+
+        if (encoded) {
+            if (scope === 'both') {
+                url += `&title=${encoded}&content=${encoded}`;
+            } else if (scope === 'title') {
+                url += `&title=${encoded}`;
+            } else if (scope === 'content') {
+                url += `&content=${encoded}`;
+            }
         }
 
         // 高级搜索参数
@@ -1070,44 +1084,26 @@
         const advSort = document.getElementById('advSort')?.value;
         const advDesc = document.getElementById('advDesc')?.checked;
 
-        if (advId) {
-            url += `&id=${encodeURIComponent(advId)}`;
-        }
+        if (advId) url += `&id=${encodeURIComponent(advId)}`;
+        if (advAuthorId) url += `&authorId=${encodeURIComponent(advAuthorId)}`;
+        if (advStart) url += `&startDate=${encodeURIComponent(advStart)}`;
+        if (advEnd) url += `&endDate=${encodeURIComponent(advEnd)}`;
+        if (advSort) url += `&sort=${encodeURIComponent(advSort)}`;
+        if (typeof advDesc === 'boolean') url += `&desc=${advDesc ? 'true' : 'false'}`;
 
-        if (advAuthorId) {
-            url += `&authorId=${encodeURIComponent(advAuthorId)}`;
-        } else {
-            // 如果没有显式 authorId，但用户选择了 author 字段，则用 authorName 兼容之前逻辑
-            if (fields.includes('author') && encoded) {
-                url += `&authorName=${encoded}`;
-            }
-        }
-
-        if (advStart) {
-            // datetime-local 的值类似 "2025-12-06T14:30"，后端 LocalDateTime 通常能解析这种格式
-            url += `&startDate=${encodeURIComponent(advStart)}`;
-        }
-        if (advEnd) {
-            url += `&endDate=${encodeURIComponent(advEnd)}`;
-        }
-        if (advSort) {
-            url += `&sort=${encodeURIComponent(advSort)}`;
-        }
-        if (typeof advDesc !== 'undefined') {
-            url += `&desc=${advDesc}`;
-        }
-
-        // 如果没有任何关键词但用户只想按高级条件搜索，也允许
         try {
-            const response = await apiFetch(url);
-            const result = await readJson(response);
+            const resp = await apiFetch(url, {method: 'GET'});
+            const result = await readJson(resp);
+            if (result && typeof result.code === 'number' && result.code !== 200) {
+                container.innerHTML = '<div class="loading">暂无文章</div>';
+                return;
+            }
             const list = extractList(result);
-            if (list.length > 0) displayArticles(list);
-            else document.getElementById('articlesList').innerHTML = '<div class="loading">暂无结果</div>';
-        } catch (error) {
-            if (error.message === 'Unauthorized') return;
-            console.error('搜索失败:', error);
-            document.getElementById('articlesList').innerHTML = '<div class="loading">搜索失败</div>';
+            displayArticles(list);
+        } catch (err) {
+            console.error('searchArticles error', err);
+            container.innerHTML = '<div class="loading">暂无文章</div>';
+            showError('搜索文章失败');
         }
     }
 
@@ -1117,13 +1113,7 @@
         document.getElementById('articleContent').value = '';
     }
 
-    function getSelectedSearchFields() {
-        const nodes = document.querySelectorAll('.search-field:checked');
-        const vals = Array.from(nodes).map(n => n.value);
-        return vals;
-    }
-
-    // 添加搜索功能到导航栏（含高级面板）
+    // 添加搜索功能到导航栏（简约样式）
     function addSearchBar() {
         const nav = document.querySelector('.nav');
         const searchBar = document.createElement('div');
@@ -1131,49 +1121,39 @@
         searchBar.style.flex = '1';
         searchBar.style.maxWidth = '720px';
         searchBar.innerHTML = `
-            <div style="position: relative; display: flex; gap: 8px; align-items: center;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="title" checked> 标题</label>
-                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="content" checked> 内容</label>
-                    <label style="font-size:13px;"><input class="search-field" type="checkbox" value="author"> 作者</label>
-                </div>
-                <div style="position: relative; flex: 1;">
-                    <input type="text" id="searchInput" placeholder="搜索文章（回车或点击🔍）"
-                           style="width: 100%; padding: 8px 12px; border: 1px solid #dadde1; border-radius: 20px; background: #f0f2f5;"
-                           onkeypress="if(event.key === 'Enter') searchArticles(document.getElementById('searchInput').value)">
-                    <button onclick="searchArticles(document.getElementById('searchInput').value)"
-                            style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">
-                        🔍
-                    </button>
-                </div>
-                <button class="btn btn-outline" style="margin-left:8px; padding:6px 10px;" onclick="toggleAdvancedSearch()">高级</button>
-            </div>
-            <div id="advancedSearchPanel" class="advanced-panel">
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <input id="advId" class="post-input" placeholder="文章 ID" style="width:120px;" type="text">
-                    <input id="advAuthorId" class="post-input" placeholder="作者 ID" style="width:120px;" type="text">
-                    <label style="font-size:13px;">开始: <input id="advStartDate" type="datetime-local"></label>
-                    <label style="font-size:13px;">结束: <input id="advEndDate" type="datetime-local"></label>
-                    <label style="font-size:13px;">排序:
-                        <select id="advSort">
-                            <option value="UPDATE_TIME" selected>更新时间</option>
-                            <option value="CREATE_TIME">创建时间</option>
-                            <option value="TITLE">标题</option>
-                            <option value="LIKE_COUNT">点赞数</option>
-                        </select>
-                    </label>
-                    <label style="font-size:13px;"><input id="advDesc" type="checkbox" checked> 降序</label>
-                    <button class="btn btn-outline" onclick="clearAdvancedSearch()">清除高级</button>
-                </div>
-            </div>
-        `;
-        // 如果已有旧搜索栏，先移除或插入到合适位置
+        <div style="position: relative; display:flex; gap:8px; align-items:center;">
+            <input id="searchInput" type="search" placeholder="搜索文章" style="flex:1; padding:8px 10px; border:1px solid #dadde1; border-radius:6px;" onkeydown="if(event.key==='Enter') searchArticles(document.getElementById('searchInput').value)">
+            <select id="searchScope" title="搜索范围" style="padding:8px; border:1px solid #dadde1; border-radius:6px;">
+                <option value="both">全部</option>
+                <option value="title">仅标题</option>
+                <option value="content">仅内容</option>
+            </select>
+            <button class="btn btn-primary" style="padding:8px 12px;" onclick="searchArticles(document.getElementById('searchInput').value)">搜索</button>
+            <button class="btn btn-outline" style="padding:8px 12px;" onclick="toggleAdvancedSearch()">高级</button>
+        </div>
+        <div id="advancedSearchPanel" class="advanced-panel" style="display:none; flex-direction:row; align-items:center;">
+            <input id="advId" placeholder="文章ID" style="width:100px;">
+            <input id="advAuthorId" placeholder="作者ID" style="width:100px;">
+            <input id="advStartDate" type="date" placeholder="开始日期" style="width:140px;">
+            <input id="advEndDate" type="date" placeholder="结束日期" style="width:140px;">
+            <select id="advSort" style="padding:6px;">
+                <option value="UPDATE_TIME">按更新时间</option>
+                <option value="CREATE_TIME">按创建时间</option>
+                <option value="TITLE">按标题</option>
+                <option value="LIKE_COUNT">按点赞</option>
+            </select>
+            <label style="display:flex; align-items:center; gap:6px;">
+                <input id="advDesc" type="checkbox" checked> 降序
+            </label>
+            <button class="btn btn-outline" onclick="clearAdvancedSearch()" style="padding:6px 10px;">清空</button>
+        </div>
+    `;
         const existing = document.getElementById('customSearchBar');
         if (existing) existing.remove();
         searchBar.id = 'customSearchBar';
+        // 插入到 nav 中，确保在右侧按钮之前
         nav.insertBefore(searchBar, nav.children[1]);
     }
-
     function toggleAdvancedSearch() {
         const panel = document.getElementById('advancedSearchPanel');
         if (!panel) return;
