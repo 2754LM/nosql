@@ -206,6 +206,7 @@
         .hot-article {
             padding: 8px 0;
             border-bottom: 1px solid #f0f2f5;
+            cursor: pointer;
         }
 
         .hot-article:last-child {
@@ -331,6 +332,57 @@
             border-radius: 6px;
             font-size: 13px;
         }
+
+        /* 模态弹窗样式 */
+        #articleModal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #articleModal .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        #articleModal .modal-box {
+            position: relative;
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 720px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        #articleModal .modal-close {
+            position: absolute;
+            right: 8px;
+            top: 6px;
+            border: none;
+            background: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        #articleModal .modal-meta {
+            color: #8b8f94;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        #articleModal .modal-likes {
+            color: #65676b;
+            font-size: 13px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -403,11 +455,26 @@
     </div>
 </main>
 
+<!-- 文章详情模态 -->
+<div id="articleModal" aria-hidden="true">
+    <div class="modal-overlay" onclick="hideArticleModal()"></div>
+    <div aria-modal="true" class="modal-box" role="dialog">
+        <button aria-label="关闭" class="modal-close" onclick="hideArticleModal()">×</button>
+        <h3 id="modalTitle">标题</h3>
+        <div id="modalMeta" class="modal-meta"></div>
+        <div id="modalContent" style="white-space: pre-wrap; color:#333; margin-top:8px;"></div>
+        <div id="modalLikes" class="modal-likes"></div>
+    </div>
+</div>
+
 <script>
     // 全局变量
     let currentUser = null;
     let currentToken = null;
     const API_BASE = '/api';
+
+    // 缓存热门文章列表，供弹窗使用
+    let hotArticlesCache = [];
 
     // 通用：处理认证过期，清本地并更新 UI
     function handleAuthExpired() {
@@ -711,39 +778,58 @@
             const likedClass = article.liked ? 'liked' : '';
             const likeCount = (article.likeCount == null) ? 0 : article.likeCount;
 
+            const createTime = formatDateTime(article.crtTime);
+            const updateTime = formatDateTime(article.recTime);
+
             el.innerHTML = `
-                <div class="article-header">
-                    <div class="author-avatar">${avatarChar}</div>
-                    <div class="author-info">
-                        <div class="author-name">${authorName}</div>
+            <div class="article-header">
+                <div class="author-avatar">${avatarChar}</div>
+                <div class="author-info">
+                    <div class="author-name">${authorName}</div>
+                </div>
+                ${currentUser && (currentUser.userId === article.author?.userId || currentUser.id === article.author?.userId) ? `
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-outline" onclick="editArticle(${article.id})">编辑</button>
+                        <button class="btn btn-outline" onclick="deleteArticle(${article.id})">删除</button>
                     </div>
-                    ${currentUser && (currentUser.userId === article.author?.userId || currentUser.id === article.author?.userId) ? `
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-outline" onclick="editArticle(${article.id})">编辑</button>
-                            <button class="btn btn-outline" onclick="deleteArticle(${article.id})">删除</button>
-                        </div>
-                    ` : ''}
-                </div>
-                <h3 class="article-title">${article.title || '无标题'}</h3>
-                <div class="article-content">${article.content || '无内容'}</div>
-                <div class="article-actions">
-                    <button onclick="toggleLike(${article.id})" class="action-btn ${likedClass}">
-                        <span>👍</span>
-                        <span>${likeCount}</span>
-                    </button>
-                    <button onclick="toggleFollow(${article.author?.userId})" class="action-btn ${article.following ? 'liked' : ''}">
-                        <span>👤</span>
-                        <span>${article.following ? '已关注' : '关注'}</span>
-                    </button>
-                </div>
-            `;
+                ` : ''}
+            </div>
+            <h3 class="article-title">${article.title || '无标题'}</h3>
+            <div class="article-meta" style="color:#8b8f94; font-size:12px; margin-bottom:8px;">
+                ${createTime ? `创建：${createTime}` : ''}
+                ${updateTime ? `　更新：${updateTime}` : ''}
+            </div>
+            <div class="article-content">${article.content || '无内容'}</div>
+            <div class="article-actions">
+                <button onclick="toggleLike(${article.id})" class="action-btn ${likedClass}">
+                    <span>👍</span>
+                    <span>${likeCount}</span>
+                </button>
+                <button onclick="toggleFollow(${article.author?.userId})" class="action-btn ${article.following ? 'liked' : ''}">
+                    <span>👤</span>
+                    <span>${article.following ? '已关注' : '关注'}</span>
+                </button>
+            </div>
+        `;
             container.appendChild(el);
         });
     }
 
-    // 加载热门文章
+    // 加载热门文章（替换实现：若未登录显示提示）
     async function loadHotArticles() {
         const container = document.getElementById('hotArticles');
+
+        // 未登录时直接显示提示并返回（避免调用需要鉴权的接口）
+        if (!currentUser) {
+            container.innerHTML = `
+                <div class="loading">
+                    请登录后查看热门文章
+                </div>
+            `;
+            hotArticlesCache = [];
+            return;
+        }
+
         container.innerHTML = '<div class="loading">加载中...</div>';
         try {
             const response = await apiFetch(`${API_BASE}/article/hot?limit=5`);
@@ -753,29 +839,77 @@
                 displayHotArticles(list);
             } else {
                 container.innerHTML = '<div class="loading">暂无热门文章</div>';
+                hotArticlesCache = [];
             }
         } catch (error) {
             if (error.message === 'Unauthorized') return;
             console.error('加载热门文章失败:', error);
             container.innerHTML = '<div class="loading">加载失败</div>';
+            hotArticlesCache = [];
         }
     }
 
-    // 显示热门文章
+    // 显示热门文章：渲染后绑定点击事件并缓存
     function displayHotArticles(articles) {
         const container = document.getElementById('hotArticles');
+        hotArticlesCache = Array.isArray(articles) ? articles : [];
 
-        if (!articles || articles.length === 0) {
+        if (!hotArticlesCache || hotArticlesCache.length === 0) {
             container.innerHTML = '<div class="loading">暂无热门文章</div>';
             return;
         }
 
-        container.innerHTML = articles.map(article => `
-                <div class="hot-article">
-                    <div class="hot-article-title">${article.title}</div>
+        container.innerHTML = hotArticlesCache.map((article, idx) => `
+                <div class="hot-article" data-index="${idx}">
+                    <div class="hot-article-title">${article.title || '无标题'}</div>
                     <div class="hot-article-likes">👍 ${article.likeCount ?? 0} 个赞</div>
                 </div>
             `).join('');
+
+        // 绑定点击事件，使用索引显示对应文章
+        container.querySelectorAll('.hot-article').forEach(el => {
+            el.addEventListener('click', () => {
+                const idx = parseInt(el.getAttribute('data-index'), 10);
+                showArticleModal(idx);
+            });
+        });
+    }
+
+    // 显示模态，传入 hotArticlesCache 的索引
+    function showArticleModal(index) {
+        const article = hotArticlesCache[index];
+        if (!article) return;
+
+        const titleEl = document.getElementById('modalTitle');
+        const metaEl = document.getElementById('modalMeta');
+        const contentEl = document.getElementById('modalContent');
+        const likesEl = document.getElementById('modalLikes');
+        const modal = document.getElementById('articleModal');
+
+        titleEl.textContent = article.title || '无标题';
+        const createTime = formatDateTime(article.crtTime) || '';
+        const updateTime = formatDateTime(article.recTime) || '';
+        const authorName = (article.author && (article.author.username || article.author.userName)) || '未知用户';
+
+        let metaText = `作者：${authorName}`;
+        if (createTime) metaText += `　创建：${createTime}`;
+        if (updateTime) metaText += `　更新：${updateTime}`;
+        metaEl.textContent = metaText;
+
+        // 把内容作为纯文本展示，保留换行
+        contentEl.textContent = article.content || '无内容';
+
+        likesEl.textContent = `👍 ${article.likeCount ?? 0} 个赞`;
+
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideArticleModal() {
+        const modal = document.getElementById('articleModal');
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
     }
 
     // 加载关注列表
@@ -1052,6 +1186,14 @@
         setTimeout(() => {
             if (successDiv.parentNode) successDiv.remove();
         }, 3000);
+    }
+
+    function formatDateTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     // 搜索文章（简化：默认同时按标题与内容搜索，保留高级面板用于筛选 id/author/date/sort）

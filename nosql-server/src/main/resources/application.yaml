@@ -19,4 +19,4 @@ datasource:
 
 nosql:
   scheduling:
-    article-cache-consistency-cron: "0 */30 * * * ?"
+    article-cache-consistency-cron: "0 */1 * * * ?"

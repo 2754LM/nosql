@@ -126,7 +126,12 @@ public class ArticleServiceImpl implements ArticleService {
       finalArticles = cachedHotArticles;
     } else {
       List<Article> dbArticles =
-          DB.find(Article.class).orderBy("likeCount desc").setMaxRows(limit).findList();
+          DB.find(Article.class)
+              .fetch("author", "id,name")
+              .orderBy("likeCount desc")
+              .setMaxRows(limit)
+              .findList();
+
       finalArticles = dbArticles;
       articleCacheService.setHotArticles(dbArticles);
       Map<Long, Article> articleMap =

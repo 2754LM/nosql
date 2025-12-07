@@ -1,6 +1,7 @@
 package com.cczu.nosql.service.impl;
 
 import com.cczu.nosql.service.RedisService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Service;
 public class RedisServiceImpl implements RedisService {
 
   private final RedissonClient redissonClient;
+  private final ObjectMapper objectMapper;
 
-  public RedisServiceImpl(RedissonClient redissonClient) {
+  public RedisServiceImpl(RedissonClient redissonClient, ObjectMapper objectMapper) {
     this.redissonClient = redissonClient;
+    this.objectMapper = objectMapper;
   }
 
   /* -------- String / Value -------- */
@@ -28,6 +31,18 @@ public class RedisServiceImpl implements RedisService {
   public <T> T get(String key, Class<T> type) {
     Object value = get(key);
     if (value == null) return null;
+    // 如果是 Map（来自 JSON 编解码），使用 ObjectMapper 转换为目标类型
+    if (value instanceof Map) {
+      return objectMapper.convertValue(value, type);
+    }
+    // 如果是字符串且目标不是 String，尝试反序列化
+    if (value instanceof String && type != String.class) {
+      try {
+        return objectMapper.readValue((String) value, type);
+      } catch (Exception ignore) {
+        // 回退到强转
+      }
+    }
     return type.cast(value);
   }
 
@@ -106,7 +121,6 @@ public class RedisServiceImpl implements RedisService {
     return result;
   }
 
-  // java
   @Override
   @SuppressWarnings("unchecked")
   public <T> Map<String, T> mGet(List<String> keys, Class<T> type) {
@@ -134,33 +148,42 @@ public class RedisServiceImpl implements RedisService {
           } else if (type == Byte.class) {
             converted = (T) Byte.valueOf(num.byteValue());
           } else {
-            // 目标不是常见数字包装类型，尝试直接判断实例
             if (type.isInstance(value)) {
               converted = (T) value;
             }
           }
         } else if (type.isInstance(value)) {
           converted = (T) value;
+        } else if (value instanceof Map) {
+          // 关键：如果是 Map（JSON 反序列化后），使用 ObjectMapper 转换为目标类型
+          converted = objectMapper.convertValue(value, type);
         } else {
-          // 回退：尝试通过字符串解析常见类型
+          // 回退：尝试通过字符串解析常见类型或使用 ObjectMapper 反序列化
           String s = value.toString();
           if (type == String.class) {
             converted = (T) s;
-          } else if (type == Long.class) {
-            converted = (T) Long.valueOf(s);
-          } else if (type == Integer.class) {
-            converted = (T) Integer.valueOf(s);
-          } else if (type == Double.class) {
-            converted = (T) Double.valueOf(s);
-          } else if (type == Float.class) {
-            converted = (T) Float.valueOf(s);
-          } else if (type == Short.class) {
-            converted = (T) Short.valueOf(s);
-          } else if (type == Byte.class) {
-            converted = (T) Byte.valueOf(s);
           } else {
-            // 无法转换，跳过该 key
-            continue;
+            try {
+              converted = objectMapper.readValue(s, type);
+            } catch (Exception e) {
+              // 尝试基础类型解析
+              if (type == Long.class) {
+                converted = (T) Long.valueOf(s);
+              } else if (type == Integer.class) {
+                converted = (T) Integer.valueOf(s);
+              } else if (type == Double.class) {
+                converted = (T) Double.valueOf(s);
+              } else if (type == Float.class) {
+                converted = (T) Float.valueOf(s);
+              } else if (type == Short.class) {
+                converted = (T) Short.valueOf(s);
+              } else if (type == Byte.class) {
+                converted = (T) Byte.valueOf(s);
+              } else {
+                // 无法转换，跳过该 key
+                continue;
+              }
+            }
           }
         }
 
@@ -239,6 +262,15 @@ public class RedisServiceImpl implements RedisService {
     RMap<String, Object> map = redissonClient.getMap(key);
     Object value = map.get(field);
     if (value == null) return null;
+    if (value instanceof Map) {
+      return objectMapper.convertValue(value, type);
+    }
+    if (value instanceof String && type != String.class) {
+      try {
+        return objectMapper.readValue((String) value, type);
+      } catch (Exception ignore) {
+      }
+    }
     return type.cast(value);
   }
 
@@ -266,7 +298,12 @@ public class RedisServiceImpl implements RedisService {
     Map<String, Object> raw = map.readAllMap();
     Map<String, T> result = new HashMap<>(raw.size());
     for (Map.Entry<String, Object> entry : raw.entrySet()) {
-      result.put(entry.getKey(), type.cast(entry.getValue()));
+      Object v = entry.getValue();
+      if (v instanceof Map) {
+        result.put(entry.getKey(), objectMapper.convertValue(v, type));
+      } else {
+        result.put(entry.getKey(), type.cast(v));
+      }
     }
     return result;
   }
@@ -300,7 +337,6 @@ public class RedisServiceImpl implements RedisService {
   @Override
   public <T> Set<T> sMembers(String key, Class<T> type) {
     RSet<T> set = redissonClient.getSet(key);
-    // 复制一份，避免暴露底层集合
     return new HashSet<>(set);
   }
 

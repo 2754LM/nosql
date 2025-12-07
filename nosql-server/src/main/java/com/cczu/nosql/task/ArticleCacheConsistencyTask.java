@@ -56,12 +56,13 @@ public class ArticleCacheConsistencyTask {
 
         // 比对点赞数
         long dbLike = dbArticle.getLikeCount() == null ? 0L : dbArticle.getLikeCount();
-        long cacheLike = cacheLikeMap.getOrDefault(articleId, 0L);
+        Long cacheLikeObj = cacheLikeMap.get(articleId);
+        long cacheLike = cacheLikeObj != null ? cacheLikeObj : 0L;
         if (Math.abs(dbLike - cacheLike) > LIKE_DIFF_THRESHOLD) {
           fixLikeCountMap.put(articleId, dbLike);
         }
 
-        // 比对基础内容（这里只做标题 + 内容的简单对比）
+        // 比对基础内容（只做标题 + 内容）
         Article cacheArticle = cacheArticleMap.get(articleId);
         boolean needFixArticle = false;
         if (cacheArticle == null) {
@@ -80,7 +81,7 @@ public class ArticleCacheConsistencyTask {
         }
       }
 
-      // 3. 执行回填：以 MySQL 为准写回 Redis
+      log.info("文章缓存一致性校验任务完成，需修复点赞={}，需修复文章实体={}", fixLikeCountMap.size(), fixArticleMap.size());
       if (!fixLikeCountMap.isEmpty()) {
         articleCacheService.batchSetLikeCount(fixLikeCountMap);
         log.info("已回填点赞数到 Redis，条数={}", fixLikeCountMap.size());
@@ -90,7 +91,6 @@ public class ArticleCacheConsistencyTask {
         log.info("已回填文章实体到 Redis，条数={}", fixArticleMap.size());
       }
 
-      log.info("文章缓存一致性校验任务完成，需修复点赞={}，需修复文章实体={}", fixLikeCountMap.size(), fixArticleMap.size());
 
     } catch (Exception e) {
       log.error("文章缓存一致性校验任务执行异常", e);
